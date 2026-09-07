@@ -66,6 +66,19 @@
  *     `api.applyPinStyleMap`, which re-validates every key, so the round-trip
  *     cannot write a property the live mutator would have rejected.
  *
+ *   - `bindings` is the session-level list of Pin-to-Pin reactions (each a
+ *     `{sourcePinId, signal, action}` triple - see `src/pins/reactions.js`). It
+ *     rides at the top of the snapshot, beside `pins`, not inside any one Pin's
+ *     node, because a binding names *two* Pins and belongs to neither. Emitted
+ *     only when there are any, so a canvas with no reactions - and a snapshot
+ *     from before the feature - carries no `bindings` key. `deserializeSession`
+ *     loads it through the session's own `reactionsFor(session).load`, which
+ *     re-validates every binding and drops one whose source or target Pin did not
+ *     come back, so the round-trip cannot resurrect a dangling reaction.
+ *     `restoreTree` itself never touches bindings - they are session state, not a
+ *     Pin's, applied after the tree exists (a static-export page does the same in
+ *     its boot script), which is what leaves that function's embed unchanged.
+ *
  * `restoreTree` is deliberately self-contained: no imports, no module-scope
  * references, every dependency arrives through its `api` argument. That is what
  * lets `./export-static.js` stringify this exact function into a generated page
@@ -73,7 +86,7 @@
  * the reconstruction logic that drifts the first time either side changes.
  */
 
-import { applyPinStyleMap, traitRegistry } from '../../src/index.js';
+import { applyPinStyleMap, reactionsFor, traitRegistry } from '../../src/index.js';
 
 /** Snapshot format version, bumped whenever a captured field changes meaning. */
 export const SANDBOX_FORMAT_VERSION = 1;
@@ -268,12 +281,19 @@ export function serializeSession(session) {
     throw new TypeError('serializeSession: a CloudCanvasSession is required');
   }
 
-  return {
+  const snapshot = {
     version: SANDBOX_FORMAT_VERSION,
     // Paint order, for the same reason the children are (see `orderedByPaint`):
     // a bring-to-front on open canvas is recorded nowhere but the DOM.
     pins: orderedRoots(session).map(serializePin)
   };
+
+  // Reactions are session state, so they ride at the top level beside the Pins,
+  // and only when there are any - a canvas with none is byte-identical to a
+  // pre-feature snapshot (see the header note on `bindings`).
+  const bindings = reactionsFor(session).toJSON();
+  if (bindings.length > 0) snapshot.bindings = bindings;
+  return snapshot;
 }
 
 /* ------------------ DESERIALIZE ------------------ */
@@ -407,6 +427,15 @@ export function deserializeSession(session, data) {
   const nodes = Array.isArray(data) ? data : (data && data.pins);
   const warnings = [];
   const pins = restoreTree({ traitRegistry, applyPinStyleMap }, session, nodes, warnings);
+
+  // Bindings after the tree: they name Pins by id, so the Pins have to exist for
+  // the store's dangling-endpoint check to keep the ones that resolve and warn
+  // about the ones that do not. A bare-array snapshot carries no bindings.
+  const bindings = Array.isArray(data) ? null : (data && data.bindings);
+  reactionsFor(session).load(bindings || [], {
+    pinExists: (id) => Boolean(session.getPin(id)),
+    warn: (message) => warnings.push(message)
+  });
 
   return { pins, warnings };
 }
