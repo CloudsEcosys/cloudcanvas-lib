@@ -57,6 +57,15 @@
  *     an absent `layout` restores as `'free'` and an absent `gap` as unset, so an
  *     old snapshot is indistinguishable from a Pin that never left the default.
  *
+ *   - `style` is the Pin's per-Pin appearance overrides (`pin.styleOverrides` -
+ *     corner radius, surface colour, bevel, padding, flow placement), a plain
+ *     `{ property: cssValue }` map of only the allow-listed properties actually
+ *     set inline on the root. Emitted only when non-empty, so a Pin with no
+ *     overrides - and a snapshot written before the feature existed - carries no
+ *     `style` key and restores with none. `restoreTree` applies it through
+ *     `api.applyPinStyleMap`, which re-validates every key, so the round-trip
+ *     cannot write a property the live mutator would have rejected.
+ *
  * `restoreTree` is deliberately self-contained: no imports, no module-scope
  * references, every dependency arrives through its `api` argument. That is what
  * lets `./export-static.js` stringify this exact function into a generated page
@@ -64,7 +73,7 @@
  * the reconstruction logic that drifts the first time either side changes.
  */
 
-import { traitRegistry } from '../../src/index.js';
+import { applyPinStyleMap, traitRegistry } from '../../src/index.js';
 
 /** Snapshot format version, bumped whenever a captured field changes meaning. */
 export const SANDBOX_FORMAT_VERSION = 1;
@@ -195,13 +204,27 @@ function orderedRoots(session) {
 }
 
 /**
+ * The Pin's appearance overrides, or null when it carries none.
+ *
+ * Read through the public `styleOverrides` getter (`src/pins/pin-style.js`),
+ * which returns only allow-listed properties set inline on the root. Null when
+ * empty so `serializePin` can omit the key entirely - a Pin with no overrides,
+ * and a snapshot from before the feature, are then the same shape.
+ */
+function styleOverridesOf(pin) {
+  const map = typeof pin.styleOverrides === 'object' ? pin.styleOverrides : null;
+  return map && Object.keys(map).length > 0 ? map : null;
+}
+
+/**
  * One Pin and its subtree as a plain object.
  *
  * @param {Pin} pin
  * @returns {object}
  */
 export function serializePin(pin) {
-  return {
+  const style = styleOverridesOf(pin);
+  const node = {
     id: pin.id,
     x: pin.x,
     y: pin.y,
@@ -227,6 +250,11 @@ export function serializePin(pin) {
     // survives the round-trip instead of snapping back to creation order.
     children: orderedChildren(pin).map(serializePin)
   };
+
+  // Omitted when empty, so an override-free Pin is byte-identical to one from a
+  // pre-feature snapshot (see the header note on `style`).
+  if (style) node.style = style;
+  return node;
 }
 
 /**
@@ -346,6 +374,14 @@ export function restoreTree(api, session, nodes, warnings) {
     // After the children exist: layout re-flags them all in a single pass.
     applyLayout(node, pin);
 
+    // Appearance overrides, re-validated key by key through the namespace's own
+    // mutator (`applyPinStyleMap`), so an unknown key from an old or hand-edited
+    // snapshot is skipped, not written blind. Guarded for an `api` predating the
+    // feature, exactly as trait/type restoration is guarded by `known`.
+    if (node.style && api && typeof api.applyPinStyleMap === 'function') {
+      api.applyPinStyleMap(pin, node.style);
+    }
+
     return pin;
   }
 
@@ -370,7 +406,7 @@ export function deserializeSession(session, data) {
 
   const nodes = Array.isArray(data) ? data : (data && data.pins);
   const warnings = [];
-  const pins = restoreTree({ traitRegistry }, session, nodes, warnings);
+  const pins = restoreTree({ traitRegistry, applyPinStyleMap }, session, nodes, warnings);
 
   return { pins, warnings };
 }
