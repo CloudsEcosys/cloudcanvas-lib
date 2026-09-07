@@ -7,6 +7,7 @@
  *  - serialize.js     : a session as a plain JSON tree, and back again
  *  - persistence.js   : named snapshots in localStorage, and a debounced auto-save
  *  - custom-types.js  : user-defined Pin presets in localStorage, global to the origin
+ *  - slotted-type.js  : the display component a slotted custom type renders through
  *  - zip.js           : a dependency-free STORE-mode ZIP writer
  *  - export-static.js : a session as a standalone, serverless static site
  *
@@ -40,12 +41,16 @@ export {
   CUSTOM_TYPE_TRAITS,
   DEFAULT_CUSTOM_CATEGORY,
   customTypeContents,
+  customTypeSlotContents,
   deleteCustomType,
   getCustomType,
+  isSlottedType,
   listCustomTypes,
   normalizeCustomType,
   saveCustomType
 } from './custom-types.js';
+
+export { SLOTTED_TYPE, registerSlottedType } from './slotted-type.js';
 
 export { createZip, crc32, dosTimestamp, downloadZip } from './zip.js';
 

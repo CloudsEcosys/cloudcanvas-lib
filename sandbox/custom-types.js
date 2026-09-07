@@ -104,6 +104,43 @@ function normalizeFields(fields) {
   return out;
 }
 
+/**
+ * One slot as `{name, fields}`, or null when it has no usable name.
+ *
+ * A slot is a *named* sub-region of a type - a header, a body - and its name is
+ * the only thing that distinguishes it from the flat-fields shape, so a nameless
+ * slot is dropped rather than kept as an anonymous one: two anonymous slots could
+ * not be told apart at render time, nor addressed in the editor. Its fields go
+ * through the very same `normalizeFields`, so a slot's field is a field in every
+ * other respect - kind, coercion, key de-duplication - and the machinery is
+ * shared, not forked.
+ */
+function normalizeSlot(slot) {
+  if (!slot || typeof slot !== 'object') return null;
+  const name = typeof slot.name === 'string' ? slot.name.trim() : '';
+  if (name === '') return null;
+  return { name, fields: normalizeFields(slot.fields) };
+}
+
+/**
+ * The slots a definition declares, de-duplicated by name, first wins.
+ *
+ * An older definition written before slots existed carries no `slots` key and so
+ * reads back as the empty array, which is exactly "this is a flat type" - the one
+ * signal `customTypeContents` and the placer read to keep the old render path.
+ */
+function normalizeSlots(slots) {
+  const seen = new Set();
+  const out = [];
+  for (const raw of (Array.isArray(slots) ? slots : [])) {
+    const slot = normalizeSlot(raw);
+    if (!slot || seen.has(slot.name)) continue;
+    seen.add(slot.name);
+    out.push(slot);
+  }
+  return out;
+}
+
 /** The traits a definition names, restricted to the attachable set. */
 function normalizeTraits(traits) {
   if (!Array.isArray(traits)) return [...DEFAULT_TRAITS];
@@ -121,9 +158,9 @@ function normalizeCategory(category) {
  * the type the placer expects.
  *
  * @param {object} definition
- * @returns {{name: string, category: string, fields: object[], traits: string[],
- *   chrome: boolean, bordered: boolean, reload: string, width: number|null,
- *   height: number|null}}
+ * @returns {{name: string, category: string, fields: object[], slots: object[],
+ *   traits: string[], chrome: boolean, bordered: boolean, reload: string,
+ *   width: number|null, height: number|null}}
  * @throws {TypeError} when the name is missing
  */
 export function normalizeCustomType(definition) {
@@ -135,6 +172,7 @@ export function normalizeCustomType(definition) {
     name,
     category: normalizeCategory(source.category),
     fields: normalizeFields(source.fields),
+    slots: normalizeSlots(source.slots),
     traits: normalizeTraits(source.traits),
     chrome: source.chrome !== false,
     bordered: source.bordered !== false,
@@ -144,11 +182,44 @@ export function normalizeCustomType(definition) {
   };
 }
 
+/**
+ * Whether a definition renders through named slots rather than flat fields.
+ *
+ * The single branch the placer and the editor read: a type with at least one
+ * slot is a slotted type, everything else keeps the flat `card` render it has
+ * always had.
+ */
+export function isSlottedType(definition) {
+  return normalizeCustomType(definition).slots.length > 0;
+}
+
 /** A definition's default fields as the contents object an instance is born with. */
 export function customTypeContents(definition) {
   const contents = {};
   for (const field of normalizeCustomType(definition).fields) contents[field.key] = field.value;
   return contents;
+}
+
+/**
+ * A slotted definition's slots as the contents an instance is born with.
+ *
+ * The value is *self-describing* on purpose: each slot carries its own field
+ * `{key, kind, value}` list, not a flat `{key: value}` map. The render component
+ * needs the values, but the editor needs the kinds too (a number field is a
+ * number row, a checkbox a checkbox), and a placed Pin that carried only values
+ * would have to reach back into `localStorage` for its own type to be edited -
+ * which an exported or reloaded Pin cannot do. Carried in full, the slots survive
+ * the serializer's plain-object round-trip and render and edit standalone.
+ *
+ * @returns {{slots: object[]}} the contents object, `slots` deep-copied so no two
+ *   instances share a field record
+ */
+export function customTypeSlotContents(definition) {
+  const slots = normalizeCustomType(definition).slots.map((slot) => ({
+    name: slot.name,
+    fields: slot.fields.map((field) => ({ ...field }))
+  }));
+  return { slots };
 }
 
 /* ------------------ STORAGE ------------------ */

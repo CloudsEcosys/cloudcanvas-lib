@@ -19,6 +19,42 @@
 /** Display-widget rules, plus the closing environment queries. */
 export const LIB_DISPLAY_CSS = `
 
+/* ------------------ SLOTTED CUSTOM TYPES ------------------ */
+
+/*
+ * A slotted custom type (\`sandbox/slotted-type.js\`) stacks its named regions -
+ * a header over a body - and the separation is the whole point of the shape, so
+ * it is drawn here rather than left to the content flow: a border between
+ * adjacent regions, and the first (header) region carried in the body text
+ * colour and a heavier weight so it reads as the title of the ones below it.
+ */
+.cloudcanvas-pin-slots {
+  display: flex;
+  flex-direction: column;
+}
+
+.cloudcanvas-pin-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--cc-space-2, 8px) 0;
+}
+
+.cloudcanvas-pin-slot + .cloudcanvas-pin-slot {
+  border-top: 1px solid var(--cc-border, #334155);
+}
+
+.cloudcanvas-pin-slot-field {
+  color: var(--cc-text-muted, #94a3b8);
+  font-size: var(--cc-type-sm, 12px);
+  line-height: 1.4;
+}
+
+.cloudcanvas-pin-slot:first-child .cloudcanvas-pin-slot-field {
+  color: var(--cc-text, #e2e8f0);
+  font-weight: var(--cc-weight-semibold, 600);
+}
+
 /* ------------------ TEXT ------------------ */
 
 .cloudcanvas-lib-text {
