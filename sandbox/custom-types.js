@@ -29,6 +29,20 @@
 /** Namespace every custom type lives under. */
 export const CUSTOM_TYPE_KEY_PREFIX = 'cloudcanvas-custom-type:';
 
+/**
+ * The content key a placed instance carries the name of its source type under.
+ *
+ * A placed instance is otherwise a plain Pin - it copies the type's defaults once
+ * and forgets where they came from - which leaves "update every instance of this
+ * type" with nothing to match on. This is that match: written by the placer,
+ * carried in `contents` so it round-trips through the serializer for free like any
+ * other content, and named with a `cc:` prefix no user field can collide with. It
+ * is not a value the editor lets anyone edit (the content editor filters it out),
+ * and the slotted display's `allowedKeys` lists it so a slotted instance may hold
+ * it beside its `slots` without the contents validator refusing the write.
+ */
+export const TYPE_NAME_KEY = 'cc:typeName';
+
 /** The value kinds a default field may declare. Small on purpose. */
 export const CUSTOM_FIELD_KINDS = Object.freeze(['text', 'number', 'checkbox']);
 

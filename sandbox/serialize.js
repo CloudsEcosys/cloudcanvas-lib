@@ -79,6 +79,17 @@
  *     Pin's, applied after the tree exists (a static-export page does the same in
  *     its boot script), which is what leaves that function's embed unchanged.
  *
+ *   - `pages` is the session-level sitemap: a name and a Home flag per root Pin
+ *     (`./pages.js`), keyed by Pin id. It rides beside `bindings` for the very same
+ *     reason - it names a Pin rather than living inside one - and is emitted only
+ *     when a page has actually been named or flagged, so a canvas whose roots were
+ *     never named is byte-identical to a pre-feature snapshot. `deserializeSession`
+ *     loads it through the store's own `load`, which drops an entry whose Pin did
+ *     not come back and repairs a two-home file to one, so the round-trip can
+ *     neither resurrect a page for a gone Pin nor load a canvas with two homes.
+ *     `restoreTree` never touches it - it is session state, applied after the tree
+ *     exists, exactly like the bindings beside it.
+ *
  * `restoreTree` is deliberately self-contained: no imports, no module-scope
  * references, every dependency arrives through its `api` argument. That is what
  * lets `./export-static.js` stringify this exact function into a generated page
@@ -87,6 +98,7 @@
  */
 
 import { applyPinStyleMap, reactionsFor, traitRegistry } from '../../src/index.js';
+import { pagesFor } from './pages.js';
 
 /** Snapshot format version, bumped whenever a captured field changes meaning. */
 export const SANDBOX_FORMAT_VERSION = 1;
@@ -293,6 +305,12 @@ export function serializeSession(session) {
   // pre-feature snapshot (see the header note on `bindings`).
   const bindings = reactionsFor(session).toJSON();
   if (bindings.length > 0) snapshot.bindings = bindings;
+
+  // The sitemap rides beside the bindings, and for the same reason (see the header
+  // note on `pages`): both name Pins by id and belong to no single one. Emitted
+  // only when a page has been named or flagged.
+  const pages = pagesFor(session).toJSON();
+  if (pages.length > 0) snapshot.pages = pages;
   return snapshot;
 }
 
@@ -433,6 +451,15 @@ export function deserializeSession(session, data) {
   // about the ones that do not. A bare-array snapshot carries no bindings.
   const bindings = Array.isArray(data) ? null : (data && data.bindings);
   reactionsFor(session).load(bindings || [], {
+    pinExists: (id) => Boolean(session.getPin(id)),
+    warn: (message) => warnings.push(message)
+  });
+
+  // Pages after the tree too, for the same reason and through the same check: an
+  // entry naming a Pin that did not come back is dropped, and a two-home file is
+  // repaired to one. A bare-array snapshot carries none.
+  const pages = Array.isArray(data) ? null : (data && data.pages);
+  pagesFor(session).load(pages || [], {
     pinExists: (id) => Boolean(session.getPin(id)),
     warn: (message) => warnings.push(message)
   });

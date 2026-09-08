@@ -32,12 +32,20 @@ import {
   setText,
   setVisible
 } from '../../src/index.js';
+import { TYPE_NAME_KEY } from './custom-types.js';
 
 /** Registry name, and the `type` a slotted instance is created by. */
 export const SLOTTED_TYPE = 'cc-slotted';
 
-/** The one content key a slotted Pin carries; anything else `setContents` refuses. */
-const ALLOWED_KEYS = ['slots'];
+/**
+ * The content keys a slotted Pin may carry; anything else `setContents` refuses.
+ * `slots` is the render data; `TYPE_NAME_KEY` is the source-type back-reference a
+ * placed instance carries (`custom-types.js`), listed here so the same instance
+ * identity a flat card gets for free (a card has no `allowedKeys`) is legal on a
+ * slotted one too. Neither the `build` below nor `update` reads the type name; it
+ * rides for the push-update machinery and the serializer alone.
+ */
+const ALLOWED_KEYS = ['slots', TYPE_NAME_KEY];
 
 /** Class the region stack hangs off; styled by `../styles-display-css.js`. */
 const STACK_CLASS = 'cloudcanvas-pin-slots';
