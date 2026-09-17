@@ -90,6 +90,19 @@
  *     `restoreTree` never touches it - it is session state, applied after the tree
  *     exists, exactly like the bindings beside it.
  *
+ *   - `theme` is the canvas's own `--cc-*` token override set - the light/dark
+ *     preset or the custom colours chosen in the Sandbox's Theme panel
+ *     (`examples/website-sandbox-theme.js`). It is a property of the page being
+ *     built, not of one Pin, so it rides beside `bindings` and `pages`, and it is
+ *     read straight back off the host element's inline custom properties - the
+ *     same "the DOM is the state" discipline `chrome` keeps by living on a class
+ *     list. Emitted only when the host carries a theme, so a canvas on the default
+ *     dark fallback is byte-identical to a pre-feature snapshot. `deserializeSession`
+ *     applies it through the core's own `applyTheme` (a `null`/absent theme clears
+ *     the host back to that dark fallback), which is what makes an undo across a
+ *     theme change restore the previous theme rather than stranding the new one.
+ *
+ * `restoreTree` is deliberately self-contained: no imports, no module-scope
  * `restoreTree` is deliberately self-contained: no imports, no module-scope
  * references, every dependency arrives through its `api` argument. That is what
  * lets `./export-static.js` stringify this exact function into a generated page
@@ -97,7 +110,7 @@
  * the reconstruction logic that drifts the first time either side changes.
  */
 
-import { applyPinStyleMap, reactionsFor, traitRegistry } from '../../src/index.js';
+import { TOKEN_PREFIX, applyPinStyleMap, applyTheme, reactionsFor, traitRegistry } from '../../src/index.js';
 import { pagesFor } from './pages.js';
 
 /** Snapshot format version, bumped whenever a captured field changes meaning. */
@@ -283,6 +296,29 @@ export function serializePin(pin) {
 }
 
 /**
+ * The canvas's theme as a plain `{ '--cc-*': value }` map, or null when the host
+ * carries none.
+ *
+ * `applyTheme` writes the theme as inline custom properties on the host, so the
+ * host *is* the theme's store - this reads it straight back, the same way `chrome`
+ * is read off a class list. Only `--cc-`-prefixed properties are taken, so an
+ * unrelated inline style the host happens to carry never leaks into the snapshot.
+ * Null when empty so `serializeSession` can omit the key, leaving a default-dark
+ * canvas byte-identical to a pre-feature snapshot.
+ */
+function themeOf(session) {
+  const style = session && session.hostElement ? session.hostElement.style : null;
+  if (!style || typeof style.item !== 'function') return null;
+
+  const theme = {};
+  for (let index = 0; index < style.length; index += 1) {
+    const name = style.item(index);
+    if (name && name.startsWith(TOKEN_PREFIX)) theme[name] = style.getPropertyValue(name).trim();
+  }
+  return Object.keys(theme).length > 0 ? theme : null;
+}
+
+/**
  * A whole session as a plain, JSON-safe snapshot.
  *
  * @param {CloudCanvasSession} session
@@ -311,6 +347,13 @@ export function serializeSession(session) {
   // only when a page has been named or flagged.
   const pages = pagesFor(session).toJSON();
   if (pages.length > 0) snapshot.pages = pages;
+
+  // The canvas theme rides beside the bindings and pages, and for the same reason
+  // (see the header note on `theme`): it is a property of the page, not of any one
+  // Pin. Emitted only when the host carries one, so a default-dark canvas is
+  // byte-identical to a pre-feature snapshot.
+  const theme = themeOf(session);
+  if (theme) snapshot.theme = theme;
   return snapshot;
 }
 
@@ -463,6 +506,14 @@ export function deserializeSession(session, data) {
     pinExists: (id) => Boolean(session.getPin(id)),
     warn: (message) => warnings.push(message)
   });
+
+  // The theme is applied to the host after the tree, like the session state above
+  // it. A `null`/absent theme is applied as a clear, so restoring a snapshot from
+  // before a theme change (an undo) returns the host to its dark fallback rather
+  // than leaving the just-undone theme in place. A bare-array snapshot, and a
+  // session with no host, both no-op through `applyTheme`'s own guards.
+  const theme = Array.isArray(data) ? null : (data && data.theme);
+  applyTheme(session.hostElement, theme || null);
 
   return { pins, warnings };
 }

@@ -67,3 +67,13 @@ export {
   exportStaticSite,
   renderStaticHtml
 } from './export-static.js';
+
+export {
+  serializeGroup,
+  saveGroup,
+  loadGroup,
+  listGroupKeys,
+  deleteGroup,
+  instantiateGroup,
+  GROUP_STORAGE_PREFIX
+} from '../../src/pins/group.js';
