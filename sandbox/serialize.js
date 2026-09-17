@@ -374,9 +374,9 @@ export function serializeSession(session) {
  * component library was not registered.
  *
  * Longer than this codebase's usual ceiling for one function, and deliberately:
- * its steps *are* extracted (`optionsFor`, `attachTraits`, `applyLayout`, `build`,
- * none of them more than twenty lines), they simply cannot be lifted out of the
- * enclosing scope without breaking the self-containment above.
+ * its steps *are* extracted (`safeContents`, `optionsFor`, `attachTraits`,
+ * `applyLayout`, `build`, none of them more than twenty lines), they simply cannot
+ * be lifted out of the enclosing scope without breaking the self-containment above.
  *
  * @param {{traitRegistry: TraitRegistry}} api
  * @param {CloudCanvasSession} session
@@ -394,6 +394,31 @@ export function restoreTree(api, session, nodes, warnings) {
   // value must warn, not throw, and the live setter throws - so it is gated here.
   const flowModes = ['row', 'column', 'grid'];
 
+  // Product-layer XSS guard, inlined as bare literals for the same self-containment
+  // reason as `flowModes` (this function is stringified into an exported page). A
+  // custom-type instance is a `card`, which renders an `html` key as raw innerHTML;
+  // a definition poisoned before the loader/import gate could carry one into a save
+  // or static export. Only a `cc:typeName`-marked node is an instance, so a
+  // first-party `raw` pin keeps its `html`. These two literals MUST equal the
+  // exported `HTML_KEY`/`TYPE_NAME_KEY`; a unit test asserts the inline copy cannot drift.
+  const typeMarkerKey = 'cc:typeName';
+  const reservedContentKey = 'html';
+
+  // A node's contents with the reserved markup key dropped when it is a custom-type
+  // instance, warning as it goes - a plain object either way.
+  function safeContents(node) {
+    const raw = node.contents && typeof node.contents === 'object' ? node.contents : {};
+    const keys = Object.keys(raw);
+    if (keys.indexOf(typeMarkerKey) === -1 || keys.indexOf(reservedContentKey) === -1) return raw;
+    warn('pin "' + node.id + '": dropped reserved content key "' + reservedContentKey
+      + '" from a custom-type instance');
+    const safe = {};
+    for (let index = 0; index < keys.length; index += 1) {
+      if (keys[index] !== reservedContentKey) safe[keys[index]] = raw[keys[index]];
+    }
+    return safe;
+  }
+
   function optionsFor(node, names, parent) {
     const options = {
       id: node.id,
@@ -402,7 +427,7 @@ export function restoreTree(api, session, nodes, warnings) {
       chrome: node.chrome !== false,
       bordered: node.bordered !== false,
       selectableText: Boolean(node.selectableText),
-      contents: node.contents && typeof node.contents === 'object' ? node.contents : {},
+      contents: safeContents(node),
       draggable: names.indexOf('draggable') !== -1,
       selectable: names.indexOf('selectable') !== -1
     };
