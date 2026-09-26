@@ -107,7 +107,7 @@ function reactionKey(reaction, index) {
  * @returns {boolean} whether a reaction was toggled
  */
 export function toggleChatReaction(pin, index) {
-  const reactions = pin.getContent('reactions');
+  const reactions = pin.contents.get('reactions');
   if (!Array.isArray(reactions) || !reactions[index]) return false;
 
   const current = reactions[index];
@@ -133,7 +133,7 @@ function onReactionClick(pin, container, event) {
   const pill = target && typeof target.closest === 'function' ? target.closest(`.${CHAT_CLS.PILL}`) : null;
   if (!pill || !container.contains(pill)) return;
 
-  const reactions = pin.getContent('reactions');
+  const reactions = pin.contents.get('reactions');
   const key = pill.getAttribute(KEY_ATTR);
   const index = Array.isArray(reactions)
     ? reactions.findIndex((entry, position) => String(reactionKey(entry, position)) === key)

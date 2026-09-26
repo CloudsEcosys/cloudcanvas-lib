@@ -58,8 +58,8 @@ function deselectSiblings(pin, group) {
   if (!pin.parent || !group) return;
 
   for (const sibling of pin.parent.children) {
-    if (sibling === pin || sibling.getContent('group') !== group) continue;
-    if (sibling.getContent('checked') === true) sibling.setContent('checked', false);
+    if (sibling === pin || sibling.contents.get('group') !== group) continue;
+    if (sibling.contents.get('checked') === true) sibling.setContent('checked', false);
   }
 }
 
@@ -79,9 +79,9 @@ function build(pin, contentEl) {
     // A radio only ever fires `change` on the way in; the one going out is silent.
     if (!control.checked) return;
     pin.setContent('checked', true);
-    deselectSiblings(pin, pin.getContent('group'));
+    deselectSiblings(pin, pin.contents.get('group'));
     pin.transmit(new PinEvent('change', {
-      payload: { value: pin.getContent('value') },
+      payload: { value: pin.contents.get('value') },
       bubbles: true,
       source: pin
     }));

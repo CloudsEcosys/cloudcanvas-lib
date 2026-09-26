@@ -152,7 +152,7 @@ function activateFrom(pin, root, event, fromKeyboard) {
     : null;
   if (!row || !root.contains(row)) return;
 
-  const items = pin.getContent('items');
+  const items = pin.contents.get('items');
   const key = row.getAttribute(KEY_ATTR);
   const index = Array.isArray(items)
     ? items.findIndex((entry, position) => String(itemKey(entry, position)) === key)

@@ -78,7 +78,7 @@ export function taskProgressOf(items) {
 /** Write the percentage into the primary vector; seed it when there is none. */
 function syncProgress(pin, items) {
   const progress = taskProgressOf(items);
-  if (pin.getVectors().length > 0) pin.setVector(0, progress);
+  if (pin.particle.getVectors().length > 0) pin.setVector(0, progress);
   else pin.addVector(progress);
   return progress;
 }
@@ -91,7 +91,7 @@ function syncProgress(pin, items) {
  * @returns {boolean} whether an item was toggled
  */
 export function toggleTaskItem(pin, index) {
-  const items = pin.getContent('items');
+  const items = pin.contents.get('items');
   if (!Array.isArray(items) || !items[index]) return false;
 
   const next = items.map((item, position) => (
@@ -114,7 +114,7 @@ function onChecklistChange(pin, list, event) {
   const row = target && typeof target.closest === 'function' ? target.closest(`.${TASK_CLS.ITEM}`) : null;
   if (!row || !list.contains(row)) return;
 
-  const items = pin.getContent('items');
+  const items = pin.contents.get('items');
   const key = row.getAttribute(KEY_ATTR);
   const index = Array.isArray(items)
     ? items.findIndex((item, position) => String(itemKey(item, position)) === key)
@@ -197,7 +197,7 @@ function update(pin, contents, bindings, cache) {
 
 /** Seed the progress vector from the items the card was born with. */
 function onAttach(pin) {
-  syncProgress(pin, pin.getContent('items'));
+  syncProgress(pin, pin.contents.get('items'));
 }
 
 /* ------------------ REGISTRATION ------------------ */

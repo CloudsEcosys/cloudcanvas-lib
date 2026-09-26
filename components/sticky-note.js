@@ -78,7 +78,7 @@ function themeOf(value) {
 
 /** The note's rotation, from its primary vector. */
 function tiltOf(pin) {
-  const tilt = Number(pin.getPrimaryVector());
+  const tilt = Number(pin.particle.getPrimaryVector());
   return Number.isFinite(tilt) ? tilt : 0;
 }
 
@@ -89,7 +89,7 @@ export function beginStickyEdit(pin) {
   const bindings = bindingsOf(pin);
   if (!bindings || !bindings.editor.hidden) return false;
 
-  bindings.editor.value = asText(pin.getContent('body'));
+  bindings.editor.value = asText(pin.contents.get('body'));
   pin.beginEdit(bindings.editor);
   setVisible(bindings.body, false);
   setVisible(bindings.editor, true);
@@ -207,7 +207,7 @@ function update(pin, contents, bindings, cache) {
 
 /** Seed a slight tilt for a note created without one. */
 function onAttach(pin) {
-  if (pin.getVectors().length === 0) {
+  if (pin.particle.getVectors().length === 0) {
     pin.addVector(Number((Math.random() * TILT_RANGE * 2 - TILT_RANGE).toFixed(1)));
   }
 }

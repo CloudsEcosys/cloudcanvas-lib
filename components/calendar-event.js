@@ -71,9 +71,9 @@ function asText(value) {
 /** Acknowledge: a critical event steps down to high, and the status says so. */
 export function acknowledgeCalendarEvent(pin) {
   pin.setContent('status', 'acknowledged');
-  if (pin.getContent('severity') === 'critical') pin.setContent('severity', 'high');
+  if (pin.contents.get('severity') === 'critical') pin.setContent('severity', 'high');
 
-  const title = asText(pin.getContent('title'));
+  const title = asText(pin.contents.get('title'));
   announce(pin.session, `${title} acknowledged`);
   pin.transmit(new PinEvent(ACKNOWLEDGED_EVENT, {
     payload: { eventId: pin.id, title },
@@ -87,7 +87,7 @@ export function resolveCalendarEvent(pin) {
   pin.setContent('status', 'resolved');
   pin.setContent('severity', 'info');
 
-  const title = asText(pin.getContent('title'));
+  const title = asText(pin.contents.get('title'));
   announce(pin.session, `${title} resolved`);
   pin.transmit(new PinEvent(RESOLVED_EVENT, {
     payload: { eventId: pin.id, title },

@@ -87,7 +87,7 @@ export class EditableTrait extends PinTrait {
     const input = makeElement('input', EDITABLE_INPUT_CLASS);
     input.setAttribute('type', 'text');
     input.setAttribute('aria-label', `Edit ${key}`);
-    const current = pin.getContent(key);
+    const current = pin.contents.get(key);
     input.value = current === undefined || current === null ? original : String(current);
 
     pin.beginEdit(input);

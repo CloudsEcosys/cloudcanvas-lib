@@ -65,8 +65,8 @@ function toNumber(value, fallback) {
 /** The thresholds a gauge is currently reading against. */
 function thresholdsOf(pin) {
   return {
-    warn: toNumber(pin.getContent('warn'), DEFAULT_WARN),
-    crit: toNumber(pin.getContent('crit'), DEFAULT_CRIT)
+    warn: toNumber(pin.contents.get('warn'), DEFAULT_WARN),
+    crit: toNumber(pin.contents.get('crit'), DEFAULT_CRIT)
   };
 }
 
@@ -86,7 +86,7 @@ export function telemetryStatusOf(value, warn = DEFAULT_WARN, crit = DEFAULT_CRI
  */
 export function setTelemetryReading(pin, nextValue) {
   const next = toNumber(nextValue, 0);
-  const prev = toNumber(pin.getPrimaryVector(), 0);
+  const prev = toNumber(pin.particle.getPrimaryVector(), 0);
   const { crit } = thresholdsOf(pin);
 
   pin.setVectors([next, next - prev]);
@@ -117,7 +117,7 @@ export function stopTelemetrySimulation(pin) {
 export function startTelemetrySimulation(pin, intervalMs = DEFAULT_INTERVAL_MS) {
   stopTelemetrySimulation(pin);
   const timer = setInterval(() => {
-    const current = toNumber(pin.getPrimaryVector(), 50);
+    const current = toNumber(pin.particle.getPrimaryVector(), 50);
     const change = Math.random() * 12 - 5.5;
     setTelemetryReading(pin, Math.max(0, Math.min(100, current + change)));
   }, intervalMs);
@@ -155,7 +155,7 @@ function build(pin, contentEl) {
 }
 
 function update(pin, contents, bindings, cache) {
-  const reading = toNumber(pin.getPrimaryVector(), 0);
+  const reading = toNumber(pin.particle.getPrimaryVector(), 0);
   const warn = toNumber(contents.get('warn'), DEFAULT_WARN);
   const crit = toNumber(contents.get('crit'), DEFAULT_CRIT);
   const status = telemetryStatusOf(reading, warn, crit);
@@ -174,7 +174,7 @@ function update(pin, contents, bindings, cache) {
 
 /** Seed the `[value, delta]` pair for a gauge created without vectors. */
 function onAttach(pin) {
-  if (pin.getVectors().length === 0) pin.setVectors([50, 0]);
+  if (pin.particle.getVectors().length === 0) pin.setVectors([50, 0]);
 }
 
 /* ------------------ REGISTRATION ------------------ */

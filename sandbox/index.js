@@ -9,13 +9,14 @@
  *  - custom-types.js  : user-defined Pin presets in localStorage, global to the origin
  *  - slotted-type.js  : the display component a slotted custom type renders through
  *  - pages.js         : per-session page metadata (a name and Home flag per root Pin)
+ *  - pin-ops.js       : whole-session operations (`clearSession`) the builder surfaces share
  *  - zip.js           : a dependency-free STORE-mode ZIP writer
  *  - export-static.js : a session as a standalone, serverless static site
  *
  * A barrel only. Every module here is importable on its own and none of them
  * import each other except downwards (`export-static` -> `serialize` + `zip`,
- * `persistence` -> `serialize`, `serialize` -> `pages`), so a page that only wants
- * a zip writer pays for a zip writer.
+ * `persistence` -> `serialize`, `serialize` -> `pages`, `pin-ops` -> `pages`), so a
+ * page that only wants a zip writer pays for a zip writer.
  */
 
 export {
@@ -58,6 +59,8 @@ export {
 export { SLOTTED_TYPE, registerSlottedType } from './slotted-type.js';
 
 export { PageStore, pagesFor } from './pages.js';
+
+export { clearSession } from './pin-ops.js';
 
 export { createZip, crc32, dosTimestamp, downloadZip } from './zip.js';
 

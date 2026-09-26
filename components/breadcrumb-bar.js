@@ -94,8 +94,8 @@ function build(pin, contentEl) {
 function update(pin, contents, bindings) {
   const rootName = contents.get('rootName');
   const title = contents.get('title');
-  const fallback = pin.parent && typeof pin.parent.getContent === 'function'
-    ? pin.parent.getContent('title')
+  const fallback = pin.parent && pin.parent.contents instanceof Map
+    ? pin.parent.contents.get('title')
     : undefined;
 
   setText(bindings.rootText, `🏠 ${rootName === undefined || rootName === null ? DEFAULT_ROOT_NAME : rootName}`);
