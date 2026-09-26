@@ -26,7 +26,7 @@
  * is walked with `key(i)`, the only enumeration the spec defines.
  */
 
-import { HTML_KEY, createLogger } from '../../src/index.js';
+import { HTML_KEY, createLogger } from '../../.plugin/index.js';
 
 const logger = createLogger('sandbox/custom-types');
 

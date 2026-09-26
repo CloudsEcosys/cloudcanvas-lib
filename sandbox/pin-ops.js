@@ -13,7 +13,7 @@
  * standing defect (`tests/unit/website-sandbox-templates-golden.test.js`).
  */
 
-import { applyTheme, reactionsFor } from '../../src/index.js';
+import { applyTheme, reactionsFor } from '../../.plugin/index.js';
 import { pagesFor } from './pages.js';
 
 /**

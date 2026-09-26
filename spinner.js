@@ -19,7 +19,7 @@
  * which is the only failure mode this widget really has.
  */
 
-import { defineComponent, makeElement, setAttr } from '../src/index.js';
+import { defineComponent, makeElement, setAttr } from '../.plugin/index.js';
 
 const NAME = 'spinner';
 

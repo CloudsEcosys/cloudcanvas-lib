@@ -30,7 +30,7 @@ import {
   reconcileKeyedList,
   setAttr,
   setText
-} from '../../src/index.js';
+} from '../../.plugin/index.js';
 import {
   claimHost,
   createComponentPin,

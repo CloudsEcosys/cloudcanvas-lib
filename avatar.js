@@ -28,7 +28,7 @@ import {
   setAttr,
   setText,
   setVisible
-} from '../src/index.js';
+} from '../.plugin/index.js';
 
 const NAME = 'avatar';
 const ROOT_CLASS = 'cloudcanvas-lib-avatar';

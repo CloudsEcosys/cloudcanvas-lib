@@ -17,7 +17,7 @@
  * it or when `registerComponentTraits()` does.
  */
 
-import { defineComponent, traitRegistry } from '../../src/index.js';
+import { defineComponent, traitRegistry } from '../../.plugin/index.js';
 import { injectComponentStyles } from './styles.js';
 
 /** The class a chromeless widget writes onto the content node it fills. */
@@ -35,7 +35,7 @@ export const HOST_CLASS = 'cloudcanvas-component-host';
  * `hydrate()` is styled exactly like one the factory made.
  *
  * @param {object} spec `defineComponent` spec minus `registry`
- * @returns {(registry?: TraitRegistry) => import('../../src/pins/traits/define-component.js').ComponentHandle}
+ * @returns {(registry?: TraitRegistry) => import('../../.plugin/pins/traits/define-component.js').ComponentHandle}
  */
 export function makeRegistrar(spec) {
   const handles = new WeakMap();

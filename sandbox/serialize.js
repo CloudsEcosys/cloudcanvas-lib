@@ -92,7 +92,7 @@
  *
  *   - `theme` is the canvas's own `--cc-*` token override set - the light/dark
  *     preset or the custom colours chosen in the Sandbox's Theme panel
- *     (`examples/website-sandbox-theme.js`). It is a property of the page being
+ *     (`.site/website-sandbox-theme.js`). It is a property of the page being
  *     built, not of one Pin, so it rides beside `bindings` and `pages`, and it is
  *     read straight back off the host element's inline custom properties - the
  *     same "the DOM is the state" discipline `chrome` keeps by living on a class
@@ -110,7 +110,7 @@
  * the reconstruction logic that drifts the first time either side changes.
  */
 
-import { TOKEN_PREFIX, applyPinStyleMap, applyTheme, reactionsFor, traitRegistry } from '../../src/index.js';
+import { TOKEN_PREFIX, applyPinStyleMap, applyTheme, reactionsFor, traitRegistry } from '../../.plugin/index.js';
 import { pagesFor } from './pages.js';
 
 /** Snapshot format version, bumped whenever a captured field changes meaning. */

@@ -6,8 +6,8 @@
  * Polymorphic visual pin representing emojis, raster images, sprites, or vector maps.
  */
 
-import { definePrototype } from '../../src/pins/traits/prototype.js';
-import { rotatePin } from '../../src/pins/traits/interaction.js';
+import { definePrototype } from '../../.plugin/pins/traits/prototype.js';
+import { rotatePin } from '../../.plugin/pins/traits/interaction.js';
 
 export const MEDIA_PIN_TYPE = 'media-pin';
 

@@ -7,7 +7,7 @@
  * A flat custom type is a `card`: one title, one body, one field bag. A slotted
  * one is a stack of named regions - a header above a body, each its own set of
  * fields - and that is a different subtree, so it is a different display type.
- * Rather than hand-write a `DisplayTrait` subclass for it (`../../src/pins/traits/display.js`
+ * Rather than hand-write a `DisplayTrait` subclass for it (`../../.plugin/pins/traits/display.js`
  * and the churn that comes with re-deriving the build-once/mutate-after contract),
  * this is the same `defineComponent` path every `lib/` widget takes: a `build`
  * that constructs the regions once and an `update` that only writes text into
@@ -31,7 +31,7 @@ import {
   makeTextNode,
   setText,
   setVisible
-} from '../../src/index.js';
+} from '../../.plugin/index.js';
 import { TYPE_NAME_KEY } from './custom-types.js';
 
 /** Registry name, and the `type` a slotted instance is created by. */
@@ -126,7 +126,7 @@ function update(pin, contents, bindings) {
  */
 let handle = null;
 
-/** @returns {import('../../src/pins/traits/define-component.js').ComponentHandle} */
+/** @returns {import('../../.plugin/pins/traits/define-component.js').ComponentHandle} */
 export function registerSlottedType() {
   if (!handle) {
     handle = defineComponent({

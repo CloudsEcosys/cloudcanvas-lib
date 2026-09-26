@@ -18,7 +18,7 @@
  * detaching the trait and losing its handles.
  */
 
-import { PinTrait, resizePin } from '../../../src/index.js';
+import { PinTrait, resizePin } from '../../../.plugin/index.js';
 
 /** The signals the trait listens for; see `PIN_SIGNAL_TYPES` in the core. */
 const DRAG_END_SIGNAL = 'drag:end';

@@ -32,7 +32,7 @@
  * otherwise would be a polling loop wearing an observer's name.
  */
 
-import { createLogger } from '../../src/index.js';
+import { createLogger } from '../../.plugin/index.js';
 import { deserializeSession, serializeSession } from './serialize.js';
 
 const logger = createLogger('sandbox/persistence');

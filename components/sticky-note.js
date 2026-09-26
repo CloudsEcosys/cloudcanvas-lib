@@ -31,7 +31,7 @@ import {
   setAttr,
   setText,
   setVisible
-} from '../../src/index.js';
+} from '../../.plugin/index.js';
 import {
   bindingsOf,
   claimHost,

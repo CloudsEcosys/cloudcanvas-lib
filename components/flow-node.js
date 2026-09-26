@@ -19,7 +19,7 @@ import {
   makeElement,
   makeTextNode,
   setText
-} from '../../src/index.js';
+} from '../../.plugin/index.js';
 import {
   bindingsOf,
   claimHost,

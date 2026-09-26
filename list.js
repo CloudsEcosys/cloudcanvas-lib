@@ -22,16 +22,16 @@
  * needs no rebinding.
  */
 
-import { PinEvent } from '../src/pins/traits/base.js';
-import { defineComponent } from '../src/pins/traits/define-component.js';
-import { traitRegistry } from '../src/pins/traits/registry.js';
+import { PinEvent } from '../.plugin/pins/traits/base.js';
+import { defineComponent } from '../.plugin/pins/traits/define-component.js';
+import { traitRegistry } from '../.plugin/pins/traits/registry.js';
 import {
   KEY_ATTR,
   makeElement,
   makeTextNode,
   reconcileKeyedList,
   setText
-} from '../src/pins/traits/template-kit.js';
+} from '../.plugin/pins/traits/template-kit.js';
 import { injectLibStyles } from './styles.js';
 
 /** Registry name, and the trait's own name. */

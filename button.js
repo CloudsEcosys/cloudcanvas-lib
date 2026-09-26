@@ -28,7 +28,7 @@ import {
   makeTextNode,
   setText,
   PinEvent
-} from '../src/index.js';
+} from '../.plugin/index.js';
 
 /** Registry name, and the `type` a caller creates a Pin by. */
 const NAME = 'button';
@@ -96,7 +96,7 @@ function applyVariant(root, requested, cache) {
  */
 let handle = null;
 
-/** @returns {import('../src/pins/traits/define-component.js').ComponentHandle} */
+/** @returns {import('../.plugin/pins/traits/define-component.js').ComponentHandle} */
 export function registerButton() {
   if (!handle) {
     handle = defineComponent({

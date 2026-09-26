@@ -35,7 +35,7 @@ import {
   setAttr,
   setText,
   setVisible
-} from '../src/index.js';
+} from '../.plugin/index.js';
 import { makeDismissButton, toneSurface } from './badge.js';
 
 const NAME = 'alert';

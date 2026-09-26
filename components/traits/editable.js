@@ -24,7 +24,7 @@
  * blur can fire, and the blur handler finds the edit already over.
  */
 
-import { PinEvent, PinTrait, makeElement } from '../../../src/index.js';
+import { PinEvent, PinTrait, makeElement } from '../../../.plugin/index.js';
 
 /** The class the input carries; styled by `COMPONENT_DEFAULT_CSS`. */
 export const EDITABLE_INPUT_CLASS = 'cloudcanvas-editable-input';

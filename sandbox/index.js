@@ -83,4 +83,4 @@ export {
   deleteGroup,
   instantiateGroup,
   GROUP_STORAGE_PREFIX
-} from '../../src/pins/group.js';
+} from '../../.plugin/pins/group.js';

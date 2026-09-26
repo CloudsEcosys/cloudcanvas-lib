@@ -6,7 +6,7 @@
  * Formatted prose, note, or article pin.
  */
 
-import { definePrototype } from '../../src/pins/traits/prototype.js';
+import { definePrototype } from '../../.plugin/pins/traits/prototype.js';
 
 export const DOCUMENT_PIN_TYPE = 'document-pin';
 

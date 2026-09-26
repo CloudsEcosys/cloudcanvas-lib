@@ -20,7 +20,7 @@
  * call, so most callers never need the first.
  */
 
-import { traitRegistry } from '../../src/index.js';
+import { traitRegistry } from '../../.plugin/index.js';
 
 /* ------------------ BOARD WIDGETS ------------------ */
 

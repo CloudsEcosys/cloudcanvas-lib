@@ -6,7 +6,7 @@
  * Social/engagement pin supporting likes, hearts, bookmarks, and shares with reactive counts.
  */
 
-import { definePrototype } from '../../src/pins/traits/prototype.js';
+import { definePrototype } from '../../.plugin/pins/traits/prototype.js';
 
 export const REACTABLE_PIN_TYPE = 'reactable-card';
 

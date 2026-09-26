@@ -7,8 +7,8 @@
  * Supports fluid child layouts (free, row, column, grid), child counts, and group saving.
  */
 
-import { definePrototype } from '../../src/pins/traits/prototype.js';
-import { saveGroup } from '../../src/pins/group.js';
+import { definePrototype } from '../../.plugin/pins/traits/prototype.js';
+import { saveGroup } from '../../.plugin/pins/group.js';
 
 export const SECTION_PIN_TYPE = 'canvas-section';
 

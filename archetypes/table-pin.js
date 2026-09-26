@@ -6,7 +6,7 @@
  * Interactive tabular grid / spreadsheet interface with reactive calculation.
  */
 
-import { definePrototype } from '../../src/pins/traits/prototype.js';
+import { definePrototype } from '../../.plugin/pins/traits/prototype.js';
 
 export const TABLE_PIN_TYPE = 'table-pin';
 

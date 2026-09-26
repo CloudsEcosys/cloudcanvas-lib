@@ -49,7 +49,7 @@ import {
   setAttr,
   setText,
   setVisible
-} from '../src/index.js';
+} from '../.plugin/index.js';
 
 const NAME = 'badge';
 const ROOT_CLASS = 'cloudcanvas-lib-badge';
