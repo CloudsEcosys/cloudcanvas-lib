@@ -78,9 +78,9 @@ export class SnapToGridTrait extends PinTrait {
   snap(pin) {
     if (!pin || !pin.particle) return null;
 
-    const x = this._round(pin.particle.x);
-    const y = this._round(pin.particle.y);
-    if (x !== pin.particle.x || y !== pin.particle.y) pin.setPosition(x, y);
+    const x = this._round(pin.x);
+    const y = this._round(pin.y);
+    if (x !== pin.x || y !== pin.y) pin.setPosition(x, y);
     return { x, y };
   }
 
@@ -96,9 +96,9 @@ export class SnapToGridTrait extends PinTrait {
   snapResize(pin) {
     if (!pin || !pin.particle) return null;
 
-    const width = Math.max(this.gridSize, this._round(pin.particle.width));
-    const height = Math.max(this.gridSize, this._round(pin.particle.height));
-    if (width !== pin.particle.width || height !== pin.particle.height) {
+    const width = Math.max(this.gridSize, this._round(pin.size.w));
+    const height = Math.max(this.gridSize, this._round(pin.size.h));
+    if (width !== pin.size.w || height !== pin.size.h) {
       resizePin(pin, width, height);
     }
 
