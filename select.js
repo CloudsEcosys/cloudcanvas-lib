@@ -53,7 +53,12 @@ function createOption(option) {
   return element;
 }
 
-/** Build once: the label, the control, and the change listener. */
+/**
+ * Build once: the label, the control, and the change listener.
+ *
+ * The control's native `input` / `change` stop at the control and are re-issued
+ * as the Pin's own event, the way a custom element encapsulates its inner events.
+ */
 function build(pin, contentEl) {
   const root = makeElement('div', ROOT_CLASS);
 
@@ -64,7 +69,10 @@ function build(pin, contentEl) {
   control.id = `${pin.id}-control`;
   label.setAttribute('for', control.id);
 
-  control.addEventListener('change', () => {
+  control.addEventListener('change', (event) => {
+    // The control's native event is re-issued as the Pin's own below; it stops
+    // here so a Pin listener hears one `change`, with the payload.
+    event.stopPropagation();
     pin.setContent('value', control.value);
     pin.transmit(new PinEvent('change', { payload: control.value, bubbles: true, source: pin }));
   });

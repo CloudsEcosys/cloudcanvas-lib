@@ -48,7 +48,12 @@ const DEFAULT_STEP = 1;
 /** The content keys a Slider accepts; anything else is refused by `setContents`. */
 const ALLOWED_KEYS = ['label', 'value', 'min', 'max', 'step', 'disabled'];
 
-/** Build once: the label, the range, the readout, and both listeners. */
+/**
+ * Build once: the label, the range, the readout, and both listeners.
+ *
+ * The control's native `input` / `change` stop at the control and are re-issued
+ * as the Pin's own event, the way a custom element encapsulates its inner events.
+ */
 function build(pin, contentEl) {
   const root = makeElement('div', ROOT_CLASS);
   const label = makeElement('label', LABEL_CLASS);
@@ -62,7 +67,10 @@ function build(pin, contentEl) {
   const readout = makeElement('span', VALUE_CLASS);
   const readoutText = makeTextNode(readout);
 
-  control.addEventListener('input', () => {
+  control.addEventListener('input', (event) => {
+    // The control's native event is re-issued as the Pin's own below; it stops
+    // here so a Pin listener hears one `input`, with the payload.
+    event.stopPropagation();
     // Readout only: the model stays where it is until the drag is released.
     setText(readoutText, control.value);
     pin.transmit(new PinEvent('input', {
@@ -72,7 +80,10 @@ function build(pin, contentEl) {
     }));
   });
 
-  control.addEventListener('change', () => {
+  control.addEventListener('change', (event) => {
+    // The control's native event is re-issued as the Pin's own below; it stops
+    // here so a Pin listener hears one `change`, with the payload.
+    event.stopPropagation();
     pin.setContent('value', Number(control.value));
     pin.transmit(new PinEvent('change', {
       payload: Number(control.value),

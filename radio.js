@@ -59,7 +59,12 @@ function deselectSiblings(pin, group) {
   }
 }
 
-/** Build once: the control, its label, and the change listener. */
+/**
+ * Build once: the control, its label, and the change listener.
+ *
+ * The control's native `input` / `change` stop at the control and are re-issued
+ * as the Pin's own event, the way a custom element encapsulates its inner events.
+ */
 function build(pin, contentEl) {
   const root = makeElement('div', ROOT_CLASS);
 
@@ -71,7 +76,10 @@ function build(pin, contentEl) {
   label.setAttribute('for', control.id);
   const labelText = makeTextNode(label);
 
-  control.addEventListener('change', () => {
+  control.addEventListener('change', (event) => {
+    // The control's native event is re-issued as the Pin's own below; it stops
+    // here so a Pin listener hears one `change`, with the payload.
+    event.stopPropagation();
     // A radio only ever fires `change` on the way in; the one going out is silent.
     if (!control.checked) return;
     pin.setContent('checked', true);

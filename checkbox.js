@@ -33,7 +33,12 @@ const LABEL_CLASS = 'cloudcanvas-lib-checkbox-label';
 /** The content keys a Checkbox accepts; anything else is refused by `setContents`. */
 const ALLOWED_KEYS = ['label', 'checked', 'disabled'];
 
-/** Build once: the control, its label, and the change listener. */
+/**
+ * Build once: the control, its label, and the change listener.
+ *
+ * The control's native `input` / `change` stop at the control and are re-issued
+ * as the Pin's own event, the way a custom element encapsulates its inner events.
+ */
 function build(pin, contentEl) {
   const root = makeElement('div', ROOT_CLASS);
 
@@ -46,7 +51,10 @@ function build(pin, contentEl) {
   label.setAttribute('for', control.id);
   const labelText = makeTextNode(label);
 
-  control.addEventListener('change', () => {
+  control.addEventListener('change', (event) => {
+    // The control's native event is re-issued as the Pin's own below; it stops
+    // here so a Pin listener hears one `change`, with the payload.
+    event.stopPropagation();
     pin.setContent('checked', control.checked);
     pin.transmit(new PinEvent('change', { payload: control.checked, bubbles: true, source: pin }));
   });

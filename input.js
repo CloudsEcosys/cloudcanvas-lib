@@ -52,15 +52,27 @@ const DEFAULT_TYPE = 'text';
 /** The content keys an Input accepts; anything else is refused by `setContents`. */
 const ALLOWED_KEYS = ['label', 'value', 'placeholder', 'type', 'multiline', 'disabled', 'required'];
 
-/** Wire one control into the edit-lock contract. Both controls get all three. */
+/**
+ * Wire one control into the edit-lock contract. Both controls get all three.
+ *
+ * The control's native `input` / `change` stop at the control and are re-issued
+ * as the Pin's own event, the way a custom element encapsulates its inner events.
+ */
 function wire(pin, control) {
   control.addEventListener('focus', () => pin.beginEdit(control));
 
-  control.addEventListener('input', () => {
+  control.addEventListener('input', (event) => {
+    // The control's native event is re-issued as the Pin's own below; it stops
+    // here so a Pin listener hears one `input`, with the payload.
+    event.stopPropagation();
     // Live, and deliberately model-free: `pin.contents` stays untouched until
     // the edit is committed, so nothing can be rendered over mid-word.
     pin.transmit(new PinEvent('input', { payload: control.value, bubbles: true, source: pin }));
   });
+
+  // The Pin's `change` is the commit on blur below; the control's native one
+  // stops here so a Pin listener hears one `change`, with the payload.
+  control.addEventListener('change', (event) => event.stopPropagation());
 
   control.addEventListener('blur', () => {
     pin.setContent('value', control.value);
