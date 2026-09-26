@@ -32,7 +32,10 @@
  * otherwise would be a polling loop wearing an observer's name.
  */
 
+import { createLogger } from '../../src/index.js';
 import { deserializeSession, serializeSession } from './serialize.js';
+
+const logger = createLogger('sandbox/persistence');
 
 /** Namespace every sandbox key lives under. */
 export const SANDBOX_KEY_PREFIX = 'cloudcanvas-sandbox:';
@@ -88,7 +91,8 @@ export function loadSandbox(key, session) {
   let data = null;
   try {
     data = JSON.parse(raw);
-  } catch {
+  } catch (error) {
+    logger.warn(`saved sandbox "${key}" is not JSON; ignored`, error);
     return null;
   }
 

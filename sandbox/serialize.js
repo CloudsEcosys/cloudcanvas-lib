@@ -403,20 +403,33 @@ export function restoreTree(api, session, nodes, warnings) {
   // exported `HTML_KEY`/`TYPE_NAME_KEY`; a unit test asserts the inline copy cannot drift.
   const typeMarkerKey = 'cc:typeName';
   const reservedContentKey = 'html';
+  // The prototype keys, dropped from every node: `JSON.parse` yields `__proto__` as
+  // an own key, and copying it with `safe[key] = value` would rebind the copy's
+  // prototype. These MUST equal the exported `PROTOTYPE_KEYS`; the same drift test holds.
+  const prototypeKeys = ['__proto__', 'constructor', 'prototype'];
 
-  // A node's contents with the reserved markup key dropped when it is a custom-type
-  // instance, warning as it goes - a plain object either way.
+  // Whether one content key must not reach a Pin: a prototype key on any node, or
+  // the reserved markup key on a custom-type instance.
+  function droppedKey(key, isInstance) {
+    return prototypeKeys.indexOf(key) !== -1 || (isInstance && key === reservedContentKey);
+  }
+
+  // A node's contents with the dropped keys gone, warning per key - a plain object
+  // either way, and the original object untouched when nothing is dropped.
   function safeContents(node) {
     const raw = node.contents && typeof node.contents === 'object' ? node.contents : {};
     const keys = Object.keys(raw);
-    if (keys.indexOf(typeMarkerKey) === -1 || keys.indexOf(reservedContentKey) === -1) return raw;
-    warn('pin "' + node.id + '": dropped reserved content key "' + reservedContentKey
-      + '" from a custom-type instance');
+    const isInstance = keys.indexOf(typeMarkerKey) !== -1;
     const safe = {};
+    let dropped = 0;
     for (let index = 0; index < keys.length; index += 1) {
-      if (keys[index] !== reservedContentKey) safe[keys[index]] = raw[keys[index]];
+      const key = keys[index];
+      if (!droppedKey(key, isInstance)) { safe[key] = raw[key]; continue; }
+      dropped += 1;
+      warn('pin "' + node.id + '": dropped reserved content key "' + key + '"'
+        + (key === reservedContentKey ? ' from a custom-type instance' : ''));
     }
-    return safe;
+    return dropped === 0 ? raw : safe;
   }
 
   function optionsFor(node, names, parent) {

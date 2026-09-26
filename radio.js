@@ -29,6 +29,7 @@ import {
   setVisible,
   PinEvent
 } from '../src/index.js';
+import { asText } from './coerce.js';
 
 /** Registry names, and the `type`s a caller creates these Pins by. */
 const NAME = 'radio';
@@ -44,11 +45,6 @@ const ALLOWED_KEYS = ['label', 'group', 'value', 'checked', 'disabled'];
 
 /** The group Pin renders one caption; the radios themselves are its child Pins. */
 const GROUP_ALLOWED_KEYS = ['label'];
-
-/** A content value as a string; `undefined` and `null` are the empty string. */
-function asText(value) {
-  return value === undefined || value === null ? '' : String(value);
-}
 
 /**
  * Tell the siblings the platform just deselected.

@@ -27,6 +27,7 @@ import {
   setText,
   setVisible
 } from '../src/index.js';
+import { toNumber } from './coerce.js';
 
 const NAME = 'progress';
 const ROW_CLASS = 'cloudcanvas-lib-progress-row';
@@ -39,12 +40,6 @@ const TONES = ['success', 'warning', 'danger'];
 const DEFAULT_MAX = 100;
 
 const ALLOWED_KEYS = ['value', 'max', 'label', 'tone'];
-
-/** A finite number, or the stated default. */
-function toNumber(value, fallback) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
-}
 
 function build(pin, contentEl) {
   const root = makeElement('div', ROW_CLASS);

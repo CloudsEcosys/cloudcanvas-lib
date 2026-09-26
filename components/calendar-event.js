@@ -29,6 +29,7 @@ import {
   makeRegistrar,
   splitOptions
 } from './registrar.js';
+import { asText } from '../coerce.js';
 
 /** Registry name, and the `type` a caller creates a Pin by. */
 export const CALENDAR_EVENT_TYPE = 'calendar-event';
@@ -59,11 +60,6 @@ const ALLOWED_KEYS = ['title', 'time', 'severity', 'status'];
 /** The declared severity, or the default for anything that is not one. */
 function severityOf(value) {
   return EVENT_SEVERITIES.includes(value) ? value : DEFAULT_SEVERITY;
-}
-
-/** A content value as a string; `undefined` and `null` are the empty string. */
-function asText(value) {
-  return value === undefined || value === null ? '' : String(value);
 }
 
 /* ------------------ BEHAVIOUR ------------------ */

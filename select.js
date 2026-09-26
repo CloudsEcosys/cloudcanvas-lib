@@ -28,6 +28,7 @@ import {
   setVisible,
   PinEvent
 } from '../src/index.js';
+import { asText } from './coerce.js';
 
 /** Registry name, and the `type` a caller creates a Pin by. */
 const NAME = 'select';
@@ -38,11 +39,6 @@ const CONTROL_CLASS = 'cloudcanvas-lib-select-control';
 
 /** The content keys a Select accepts; anything else is refused by `setContents`. */
 const ALLOWED_KEYS = ['label', 'value', 'options', 'disabled'];
-
-/** A content value as a string; `undefined` and `null` are the empty string. */
-function asText(value) {
-  return value === undefined || value === null ? '' : String(value);
-}
 
 /** An option's key, which is also the value the element will carry for good. */
 function optionKey(option) {

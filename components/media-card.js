@@ -29,6 +29,7 @@ import {
   makeRegistrar,
   splitOptions
 } from './registrar.js';
+import { asText } from '../coerce.js';
 
 /** Registry name, and the `type` a caller creates a Pin by. */
 export const MEDIA_CARD_TYPE = 'media-card';
@@ -46,11 +47,6 @@ export const MEDIA_CLS = Object.freeze({
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const ALLOWED_KEYS = ['title', 'caption', 'src'];
-
-/** A content value as a string; `undefined` and `null` are the empty string. */
-function asText(value) {
-  return value === undefined || value === null ? '' : String(value);
-}
 
 /** The stand-in diagram: a horizon, a sun, nothing that needs a colour of its own. */
 function makePlaceholder() {

@@ -37,6 +37,7 @@ import {
   makeRegistrar,
   splitOptions
 } from './registrar.js';
+import { asText } from '../coerce.js';
 
 /** Registry names, and the `type` a caller creates each Pin by. */
 export const CHAT_MESSAGE_TYPE = 'chat-message';
@@ -69,11 +70,6 @@ const INPUT_KEYS = ['placeholder'];
 
 /** Only a hex colour has a luminance to pick a foreground against. */
 const HEX_COLOR = /^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
-
-/** A content value as a string; `undefined` and `null` are the empty string. */
-function asText(value) {
-  return value === undefined || value === null ? '' : String(value);
-}
 
 /** First letter of each of the first two words, or `U` for nobody. */
 function initialsOf(author) {

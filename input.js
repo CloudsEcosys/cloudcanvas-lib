@@ -33,6 +33,7 @@ import {
   setVisible,
   PinEvent
 } from '../src/index.js';
+import { asText } from './coerce.js';
 
 /** Registry name, and the `type` a caller creates a Pin by. */
 const NAME = 'input';
@@ -50,11 +51,6 @@ const DEFAULT_TYPE = 'text';
 
 /** The content keys an Input accepts; anything else is refused by `setContents`. */
 const ALLOWED_KEYS = ['label', 'value', 'placeholder', 'type', 'multiline', 'disabled', 'required'];
-
-/** A content value as a string; `undefined` and `null` are the empty string. */
-function asText(value) {
-  return value === undefined || value === null ? '' : String(value);
-}
 
 /** Wire one control into the edit-lock contract. Both controls get all three. */
 function wire(pin, control) {

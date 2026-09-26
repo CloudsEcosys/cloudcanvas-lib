@@ -26,7 +26,9 @@
  * is walked with `key(i)`, the only enumeration the spec defines.
  */
 
-import { HTML_KEY } from '../../src/index.js';
+import { HTML_KEY, createLogger } from '../../src/index.js';
+
+const logger = createLogger('sandbox/custom-types');
 
 /** Namespace every custom type lives under. */
 export const CUSTOM_TYPE_KEY_PREFIX = 'cloudcanvas-custom-type:';
@@ -69,8 +71,16 @@ export const RESERVED_KEY_PREFIX = TYPE_NAME_KEY.slice(0, TYPE_NAME_KEY.indexOf(
  * on every placement, reload and export: a stored-XSS sink. Derived from the engine
  * constant, never a second copy, so the reserved list cannot drift from the key the
  * renderer actually honours.
+ *
+ * The three prototype keys sit beside it. A definition's fields become a plain
+ * `contents` object (`customTypeContents`), and a field keyed `__proto__` written
+ * through `object[key] = value` would rebind that object's prototype rather than
+ * add a property; `constructor` and `prototype` are reserved with it so a saved
+ * definition can never carry a key the language gives a meaning to. The loader
+ * (`restoreTree`) inlines the same three literals; a unit test holds them equal.
  */
-export const RESERVED_FIELD_KEYS = Object.freeze([HTML_KEY]);
+export const PROTOTYPE_KEYS = Object.freeze(['__proto__', 'constructor', 'prototype']);
+export const RESERVED_FIELD_KEYS = Object.freeze([HTML_KEY, ...PROTOTYPE_KEYS]);
 
 /**
  * Whether a field key is one the engine reserves, by either rule the loader and the
@@ -316,7 +326,8 @@ export function getCustomType(name) {
 
   try {
     return normalizeCustomType(JSON.parse(raw));
-  } catch {
+  } catch (error) {
+    logger.warn(`saved custom type "${name}" is not JSON; ignored`, error);
     return null;
   }
 }

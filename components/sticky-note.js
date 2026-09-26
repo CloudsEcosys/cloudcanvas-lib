@@ -39,6 +39,7 @@ import {
   makeRegistrar,
   splitOptions
 } from './registrar.js';
+import { asText } from '../coerce.js';
 
 /** Registry name, and the `type` a caller creates a Pin by. */
 export const STICKY_NOTE_TYPE = 'sticky-note';
@@ -65,11 +66,6 @@ const ALLOWED_KEYS = ['title', 'body', 'color', 'tag'];
 
 /** Seeded tilt range, in degrees either side of upright. */
 const TILT_RANGE = 3;
-
-/** A content value as a string; `undefined` and `null` are the empty string. */
-function asText(value) {
-  return value === undefined || value === null ? '' : String(value);
-}
 
 /** The declared theme, or the default for anything that is not one. */
 function themeOf(value) {

@@ -29,6 +29,7 @@ import {
   makeRegistrar,
   splitOptions
 } from './registrar.js';
+import { toNumber } from '../coerce.js';
 
 /** Registry name, and the `type` a caller creates a Pin by. */
 export const TELEMETRY_GAUGE_TYPE = 'telemetry-gauge';
@@ -55,12 +56,6 @@ const ALLOWED_KEYS = ['title', 'unit', 'description', 'warn', 'crit'];
 
 /** Running simulations, by Pin. */
 const simulations = new WeakMap();
-
-/** A finite number, or the stated default. */
-function toNumber(value, fallback) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
-}
 
 /** The thresholds a gauge is currently reading against. */
 function thresholdsOf(pin) {

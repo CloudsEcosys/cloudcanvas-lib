@@ -29,6 +29,7 @@ import {
   setVisible,
   PinEvent
 } from '../src/index.js';
+import { toNumber } from './coerce.js';
 
 /** Registry name, and the `type` a caller creates a Pin by. */
 const NAME = 'slider';
@@ -46,12 +47,6 @@ const DEFAULT_STEP = 1;
 
 /** The content keys a Slider accepts; anything else is refused by `setContents`. */
 const ALLOWED_KEYS = ['label', 'value', 'min', 'max', 'step', 'disabled'];
-
-/** A finite number, or the stated default. */
-function toNumber(value, fallback) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
-}
 
 /** Build once: the label, the range, the readout, and both listeners. */
 function build(pin, contentEl) {
