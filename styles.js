@@ -15,14 +15,14 @@
  *   2. Widgets ship no inline styles. Everything the kit renders is styled from
  *      `LIB_DEFAULT_CSS`, by class, so a consumer can restyle it with one rule.
  *
- * This layer is optional and additive: the nine tokens below are the only ones
- * it introduces, everything else it reads is already defined by the core sheet.
+ * This layer is optional and additive: the ten tokens in `LIB_TOKENS` are the
+ * only ones it introduces, everything else it reads is already defined by the core.
  * A consumer running the light theme spreads both override sets into one call -
  * `applyTheme(host, { ...LIGHT_THEME, ...LIB_LIGHT_THEME })` - because the kit's
  * tokens are the core theme's missing half, not a replacement for it.
  */
-import { LIB_CONTROLS_CSS } from './styles-controls-css.js';
-import { LIB_DISPLAY_CSS } from './styles-display-css.js';
+import { LIB_CONTROLS_CSS } from './forms/styles-css.js';
+import { LIB_DISPLAY_CSS } from './display/styles-css.js';
 
 /**
  * The kit's default stylesheet, injected once per document by
@@ -37,6 +37,25 @@ export const LIB_DEFAULT_CSS = `${LIB_CONTROLS_CSS}${LIB_DISPLAY_CSS}`;
 
 /** Id of the single kit stylesheet element. */
 export const LIB_STYLE_ID = 'cloudcanvas-lib-styles';
+
+/**
+ * The tokens this kit introduces, each with its dark default: exactly the
+ * fallback every read of it in the kit's sheet carries, so the catalogue is the
+ * definition and applying it renders nothing new. `tests/unit/tokens-defined.test.js`
+ * holds each fallback to its value here and every `--cc-*` read to a catalogue.
+ */
+export const LIB_TOKENS = /* @__PURE__ */ Object.freeze({
+  '--cc-tone-info': '#38bdf8',
+  '--cc-tone-success': '#22c55e',
+  '--cc-tone-warning': '#eab308',
+  '--cc-tone-danger': '#f87171',
+  '--cc-input-bg': 'rgba(255, 255, 255, 0.06)',
+  '--cc-input-border': 'rgba(255, 255, 255, 0.16)',
+  '--cc-input-border-focus': 'var(--cc-accent, #38bdf8)',
+  '--cc-track-bg': 'rgba(255, 255, 255, 0.16)',
+  '--cc-thumb-bg': '#e2e8f0',
+  '--cc-border': '#334155'
+});
 
 /**
  * Light-theme overrides for the tokens this kit introduces.

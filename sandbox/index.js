@@ -19,7 +19,8 @@
  * A barrel only. Every module here is importable on its own and they import each
  * other only downwards, so a page that only wants a zip writer pays for a zip
  * writer. The builder's product modules (custom types, the slotted type, the page
- * store) live in `.site`.
+ * store) live in `.site`; group snapshots (`saveGroup` and its kin) are the
+ * engine's own, exported from `cloudcanvas`.
  */
 
 export {
@@ -65,13 +66,3 @@ export {
   exportStaticSite,
   renderStaticHtml
 } from './export-static.js';
-
-export {
-  serializeGroup,
-  saveGroup,
-  loadGroup,
-  listGroupKeys,
-  deleteGroup,
-  instantiateGroup,
-  GROUP_STORAGE_PREFIX
-} from '../../.plugin/pins/group.js';

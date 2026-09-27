@@ -35,7 +35,7 @@ import {
   setText,
   setVisible,
   PinEvent
-} from '../.plugin/index.js';
+} from '../../.plugin/index.js';
 
 /** Registry name, and the `type` a caller creates a Pin by. */
 const NAME = 'toggle';
@@ -110,7 +110,7 @@ function update(pin, contents, bindings) {
 /** Lazy, memoised registration; see `./button.js` on why it is never at import time. */
 let handle = null;
 
-/** @returns {import('../.plugin/pins/traits/define-component.js').ComponentHandle} */
+/** @returns {{name: string, createTrait: Function}} the component handle */
 export function registerToggle() {
   if (!handle) {
     handle = defineComponent({

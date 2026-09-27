@@ -16,7 +16,7 @@
  * Nothing else is written: a divider has no text, no controls and no state.
  */
 
-import { defineComponent, makeElement, setAttr } from '../.plugin/index.js';
+import { defineComponent, makeElement, setAttr } from '../../.plugin/index.js';
 
 const NAME = 'divider';
 const ROOT_CLASS = 'cloudcanvas-lib-divider';

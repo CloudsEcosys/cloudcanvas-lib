@@ -11,9 +11,9 @@
  * as everything else.
  *
  * The bar is a native `<progress>`, tinted by `data-status` through the sheet
- * rather than by an inline background. The simulation is a plain interval kept
- * in a module `WeakMap` keyed by Pin and cleared on detach, so a destroyed
- * session leaves no timer behind.
+ * rather than by an inline background. The reading is fed by the caller through
+ * `setTelemetryReading`; the gallery's random walk is the site's own
+ * (`.site/telemetry-simulation.js`).
  */
 
 import {
@@ -51,11 +51,7 @@ export const TELEMETRY_STATUSES = /* @__PURE__ */ Object.freeze(['nominal', 'war
 
 const DEFAULT_WARN = 70;
 const DEFAULT_CRIT = 90;
-const DEFAULT_INTERVAL_MS = 600;
 const ALLOWED_KEYS = ['title', 'unit', 'description', 'warn', 'crit'];
-
-/** Running simulations, by Pin. */
-const simulations = new WeakMap();
 
 /** The thresholds a gauge is currently reading against. */
 function thresholdsOf(pin) {
@@ -94,30 +90,6 @@ export function setTelemetryReading(pin, nextValue) {
     }));
   }
   return next;
-}
-
-/** Stop a running simulation; a Pin without one is left alone. */
-export function stopTelemetrySimulation(pin) {
-  const timer = simulations.get(pin);
-  if (timer === undefined) return false;
-  clearInterval(timer);
-  simulations.delete(pin);
-  return true;
-}
-
-/**
- * Drift the reading on an interval, a random walk clamped to 0..100.
- * Restarting replaces the previous interval rather than stacking a second.
- */
-export function startTelemetrySimulation(pin, intervalMs = DEFAULT_INTERVAL_MS) {
-  stopTelemetrySimulation(pin);
-  const timer = setInterval(() => {
-    const current = toNumber(pin.particle.getPrimaryVector(), 50);
-    const change = Math.random() * 12 - 5.5;
-    setTelemetryReading(pin, Math.max(0, Math.min(100, current + change)));
-  }, intervalMs);
-  simulations.set(pin, timer);
-  return timer;
 }
 
 /* ------------------ TEMPLATE ------------------ */
@@ -181,7 +153,7 @@ export const registerTelemetryGauge = /* @__PURE__ */ makeRegistrar({
   update,
   chrome: false,
   allowedKeys: ALLOWED_KEYS,
-  defaults: { onAttach, onDetach: stopTelemetrySimulation }
+  defaults: { onAttach }
 });
 
 /**
@@ -189,8 +161,7 @@ export const registerTelemetryGauge = /* @__PURE__ */ makeRegistrar({
  *
  * @param {CloudCanvasSession} session
  * @param {object} [options] `title`, `unit`, `description`, `warn`, `crit`
- *   become contents; `value` seeds the reading; `simulate` (and
- *   `simulateIntervalMs`) starts the random walk; the rest are Pin options
+ *   become contents; `value` seeds the reading; the rest are Pin options
  * @returns {Pin}
  */
 export function createTelemetryPin(session, options = {}) {
@@ -202,10 +173,7 @@ export function createTelemetryPin(session, options = {}) {
     ['crit', DEFAULT_CRIT]
   ], { x: 100, y: 100, width: 210, height: 140 });
 
-  const { value, simulate, simulateIntervalMs, ...rest } = pinOptions;
+  const { value, ...rest } = pinOptions;
   rest.vectors = [toNumber(value, 42), 0];
-
-  const pin = createComponentPin(session, registerTelemetryGauge, rest, contents, false);
-  if (simulate) startTelemetrySimulation(pin, toNumber(simulateIntervalMs, DEFAULT_INTERVAL_MS));
-  return pin;
+  return createComponentPin(session, registerTelemetryGauge, rest, contents, false);
 }

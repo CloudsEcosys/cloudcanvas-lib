@@ -5,10 +5,10 @@
  * The kit's stylesheet, first half: the foundation rules and the form controls
  * (button, input, checkbox, radio, toggle, slider, select).
  *
- * Data, not code - the same reason `src/graphics/styles-css.js` is its own file.
+ * Data, not code - the same reason `.plugin/graphics/styles-css.js` is its own file.
  * The sheet is split in two along the line the kit itself is drawn on, controls
  * against display widgets, because one file of six hundred CSS lines is a file
- * nobody reads. `./styles.js` is the door: it concatenates both halves into
+ * nobody reads. `../styles.js` is the door: it concatenates both halves into
  * `LIB_DEFAULT_CSS` and nothing else imports either half.
  *
  * THE CLASS CONTRACT, stated once for the whole kit. Every widget names its root
@@ -18,16 +18,17 @@
  * *alongside* the root class; every modifier rule is stated after its base rule,
  * so equal specificity resolves in the modifier's favour. This mirrors the core's
  * `cloudcanvas-pin-*` convention (`CLS` in
- * `src/pins/traits/display-templates.js`) at one more level of namespacing,
+ * `.plugin/addons/types.js`) at one more level of namespacing,
  * because this layer is separate and optional: a page that never imports it must
  * be unable to collide with it.
  *
  * THE TOKEN CONTRACT. Every themable value is a `var()` read whose fallback is
  * the dark default, exactly as the core sheet does it - there is no `:root`
- * block, the dark theme *is* the fallback chain. Nine tokens are new to this kit
- * (`--cc-tone-*`, `--cc-input-*`, `--cc-track-bg`, `--cc-thumb-bg`); every other
- * token read here is a core one, reused and never redefined. `LIB_LIGHT_THEME`
- * (`./styles.js`) is the reference override set, and
+ * block, the dark theme *is* the fallback chain. Ten tokens are new to this kit
+ * (`--cc-tone-*`, `--cc-input-*`, `--cc-track-bg`, `--cc-thumb-bg`, `--cc-border`),
+ * catalogued with those defaults in `LIB_TOKENS`; every other token read here is
+ * a core one, reused and never redefined. `LIB_LIGHT_THEME`
+ * (`../styles.js`) is the reference override set, and
  * `tests/unit/lib-list-and-styles.test.js` asserts that each of its keys is
  * actually read by the sheet.
  *
@@ -39,7 +40,7 @@
  * widget cannot be added to this kit without inheriting it.
  */
 
-/** Foundation and form-control rules. Concatenated by `./styles.js`. */
+/** Foundation and form-control rules. Concatenated by `../styles.js`. */
 export const LIB_CONTROLS_CSS = `
 /* ------------------ FOUNDATION ------------------ */
 

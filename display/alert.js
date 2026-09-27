@@ -11,9 +11,10 @@
  * about too - a danger that still announces politely is the failure this costs
  * one attribute write to avoid.
  *
- * The tone surface and the dismiss convention are `./badge.js`'s, imported
- * rather than re-derived; see that file's header for why the fill is translucent
- * and the foreground is computed-for-dark behind a theme override token. Here the
+ * The tone surface is `./badge.js`'s and the dismiss convention `./widget.js`'s,
+ * imported rather than re-derived; see the badge's header for why the fill is
+ * translucent and the foreground is computed-for-dark behind a theme override
+ * token. Here the
  * values land on the four surface tokens the shared sheet reads inside an alert:
  * `--cc-scope-bg` and `--cc-card-border` take the translucent tint (composited
  * over the live card, so the panel follows the theme), and both `--cc-text` and
@@ -27,16 +28,9 @@
  * no text is printed on.
  */
 
-import {
-  defineComponent,
-  makeElement,
-  makeTextNode,
-  primitives,
-  setAttr,
-  setText,
-  setVisible
-} from '../.plugin/index.js';
-import { makeDismissButton, toneSurface } from './badge.js';
+import { primitives, setAttr, setText, setVisible } from '../../.plugin/index.js';
+import { toneSurface } from './badge.js';
+import { defineWidget, leadingText } from './widget.js';
 
 const NAME = 'alert';
 const ROOT_CLASS = 'cloudcanvas-lib-alert';
@@ -49,8 +43,6 @@ const TONES = ['info', 'success', 'warning', 'danger'];
 
 /** Tones whose arrival is worth interrupting a screen reader for. */
 const ASSERTIVE_TONES = new Set(['warning', 'danger']);
-
-const ALLOWED_KEYS = ['title', 'message', 'tone', 'dismissible'];
 
 /** The declared tone, or the default. */
 function toneOf(contents) {
@@ -73,25 +65,16 @@ function toneStyle(tone) {
     + `--cc-text-muted:${text};`;
 }
 
-function build(pin, contentEl) {
-  const root = makeElement('div', ROOT_CLASS);
-  const content = makeElement('div', CONTENT_CLASS);
-  const title = makeElement('strong', TITLE_CLASS);
-  const titleText = makeTextNode(title);
-  const body = makeElement('p', BODY_CLASS);
-  const bodyText = makeTextNode(body);
-  const dismiss = makeDismissButton(pin, DISMISS_CLASS);
-
-  content.appendChild(title);
-  content.appendChild(body);
-  root.appendChild(content);
-  root.appendChild(dismiss);
-  contentEl.replaceChildren(root);
-
-  return { root, title, titleText, body, bodyText, dismiss };
+function bind(host, on, dismiss) {
+  const root = host.querySelector(`.${ROOT_CLASS}`);
+  const title = root.querySelector(`.${TITLE_CLASS}`);
+  const body = root.querySelector(`.${BODY_CLASS}`);
+  const button = root.querySelector(`.${DISMISS_CLASS}`);
+  on(button, 'click', dismiss);
+  return { root, title, titleText: leadingText(title), body, bodyText: leadingText(body), dismiss: button };
 }
 
-function update(pin, contents, bindings, cache) {
+function render(bindings, contents, cache) {
   const tone = toneOf(contents);
   const title = contents.get('title');
   const heading = title === undefined || title === null ? '' : String(title);
@@ -110,24 +93,21 @@ function update(pin, contents, bindings, cache) {
   setVisible(bindings.dismiss, contents.get('dismissible') !== false);
 }
 
-let handle = null;
+const widget = /* @__PURE__ */ defineWidget({
+  name: NAME,
+  html: `<div class="${ROOT_CLASS}"><div class="${CONTENT_CLASS}"><strong class="${TITLE_CLASS}"></strong>`
+    + `<p class="${BODY_CLASS}"></p></div>`
+    + `<button class="${DISMISS_CLASS}" type="button" aria-label="Dismiss">×</button></div>`,
+  allowedKeys: ['title', 'message', 'tone', 'dismissible'],
+  bind,
+  render
+});
 
-/** Register the Alert display type once; a second call returns the same handle. */
-export function registerAlert() {
-  if (!handle) {
-    handle = defineComponent({
-      name: NAME,
-      build,
-      update,
-      chrome: false,
-      allowedKeys: ALLOWED_KEYS
-    });
-  }
-  return handle;
-}
+/** Register the Alert Pin component once; a second call returns the same handle. */
+export const registerAlert = widget.register;
 
 /** Create an Alert Pin on `session`; see `./text.js` on the option order. */
-export function createAlertPin(session, options = {}) {
-  registerAlert();
-  return session.createPin({ chrome: false, ...options, type: NAME });
-}
+export const createAlertPin = widget.create;
+
+/** The core `alert` type: `root.blit({ type: 'alert', alert: { title, message, tone, dismissible } })`. */
+export const alertType = widget.define;

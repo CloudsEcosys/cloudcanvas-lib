@@ -1,9 +1,22 @@
 <!-- Written by Richard Christopher, Copyright 2026 NeoTec, LLC -->
 
-# CloudCanvas UI Kit (`lib/`)
+# CloudCanvas component library (`.addons/`)
 
-A base widget kit built on `defineComponent` — fifteen small, native-controls-first
-Pin types that compose into layouts rather than replacing them.
+The add-on groups built on the engine, each with its own index and subpath. They
+reach the engine only through its published entries (`cloudcanvas`,
+`cloudcanvas/core`), which `tests/unit/addons-boundary.test.js` enforces.
+
+| Group | Subpath | Index | What |
+| --- | --- | --- | --- |
+| forms | `cloudcanvas/forms` | `forms/index.js` | button, input, checkbox, radio (+ group), toggle, slider, select |
+| display | `cloudcanvas/display` | `display/index.js` | text, badge, avatar, divider, progress, spinner, alert, list |
+| kit (forms + display) | `cloudcanvas/lib` | `index.js` | both groups, the kit sheet, `registerBaseTypes()` |
+| pinboard | `cloudcanvas/components` | `components/index.js` | sticky note, task card, gauge, flow node, workspace, media card, breadcrumb, chat, calendar event |
+| serialize / export | `cloudcanvas/sandbox` | `sandbox/index.js` | save format v2, persistence, zip, static-site export |
+| archetypes | `cloudcanvas/archetypes` | `archetypes/index.js` | `section` and `table` core types |
+
+The base kit (forms + display) is sixteen small, native-controls-first widgets
+that compose into layouts rather than replacing them.
 
 Three properties define it:
 
@@ -19,14 +32,13 @@ Three properties define it:
 - **`chrome: false` by default.** A widget is not a card. It paints only itself,
   so a Pin can hold one or a layout can hold twenty.
 
-This layer is optional and additive: nothing in `src/` imports it, and
-importing it registers nothing. It ships as its own package export
-(`cloudcanvas/lib`).
+This layer is optional and additive: nothing in the engine imports it, and
+importing it registers nothing.
 
 ## Quick start
 
 ```js
-import { createButtonPin, injectLibStyles } from '../lib/index.js';
+import { createButtonPin, injectLibStyles } from 'cloudcanvas/forms';
 
 injectLibStyles();
 const btn = createButtonPin(session, { x: 40, y: 40, contents: { label: 'Save' } });
@@ -38,7 +50,7 @@ into a registry of your own — call it explicitly. Importing the barrel alone
 never touches the registry.
 
 ```js
-import { registerBaseTypes } from '../lib/index.js';
+import { registerBaseTypes } from 'cloudcanvas/lib';
 registerBaseTypes();
 ```
 
@@ -63,6 +75,21 @@ registerBaseTypes();
 | Alert    | `createAlertPin`       | `registerAlert`      |
 | List     | `createListPin`        | `registerList`       |
 
+Five display widgets are core types as well (`./display/widget.js`: one template,
+one render, both shells). With no Pin at all:
+
+```js
+import { displayTypes } from 'cloudcanvas/display';
+
+displayTypes();   // badge, avatar, progress, spinner, alert
+const bar = root.blit({ type: 'progress', progress: { value: 40, label: 'Upload' } });
+bar.set({ progress: { value: 80, label: 'Upload' } });
+```
+
+The contents are the options of the trait named like the type, so a write
+re-renders and `bar.spec` carries them. The forms, `text`, `divider` and `list`
+stay on the Pin shell: they need the Pin's id, `setContent` or `PinEvent`.
+
 ## Class contract
 
 Every widget names its root `cloudcanvas-lib-<widget>` and every child
@@ -73,9 +100,10 @@ alongside the root class. One more level of namespacing than the core's own
 
 ## Theming
 
-The kit adds nine tokens the core does not define (`--cc-tone-*`, `--cc-input-*`,
-`--cc-track-bg`, `--cc-thumb-bg`). Their dark defaults are baked into the sheet as
-fallbacks; for light mode, spread both override sets into one call:
+The kit adds ten tokens the core does not define (`--cc-tone-*`, `--cc-input-*`,
+`--cc-track-bg`, `--cc-thumb-bg`, `--cc-border`), catalogued with their dark
+defaults in `LIB_TOKENS`. Those defaults are also the sheet's fallbacks; for light
+mode, spread both override sets into one call:
 
 ```js
 applyTheme(host, { ...LIGHT_THEME, ...LIB_LIGHT_THEME });
@@ -102,22 +130,22 @@ list.addEventListener('list:select', ({ payload }) => {
 });
 ```
 
-## `lib/components/` — the pre-built pin-board library
+## `components/` — the pinboard group
 
-A second, separate collection lives at `lib/components/` (package export
+A second, separate collection lives at `components/` (package export
 `cloudcanvas/components`): sticky notes, task cards, telemetry gauges, flow
 nodes, workspace groups, media cards, a breadcrumb bar, chat messages, and
 calendar events — app-shaped widgets rather than base primitives, which is why
 they sit in their own directory instead of alongside the base kit above.
 
 Same explicit-registration discipline as the base kit: importing
-`lib/components/index.js` registers nothing. Call `registerComponentTraits()`
+`components/index.js` registers nothing. Call `registerComponentTraits()`
 yourself if you want these names resolvable by string (a `type:` option, or
 `hydrate()`'s `data-cc-type` attribute) — most call sites don't need to, since
 every `create*Pin` factory constructs its trait directly.
 
 ```js
-import { createStickyNotePin } from '../lib/components/index.js';
+import { createStickyNotePin } from 'cloudcanvas/components';
 
 const note = createStickyNotePin(session, { x: 40, y: 40, contents: { title: 'Ship it' } });
 ```
@@ -133,14 +161,15 @@ group is the one that keeps the core card, because it is a scope and the well
 its children sit in is the core's.
 
 The behaviours a widget exposes are functions taking the Pin, not methods on
-its trait: `toggleTaskItem`, `setTelemetryReading` / `startTelemetrySimulation`
-/ `stopTelemetrySimulation`, `transmitFlowPulse`, `focusWorkspace`,
+its trait: `toggleTaskItem`, `setTelemetryReading`, `transmitFlowPulse`, `focusWorkspace`,
 `navigateBreadcrumbBack`, `toggleChatReaction` / `sendChatMessage`,
 `acknowledgeCalendarEvent` / `resolveCalendarEvent`, `beginStickyEdit` /
 `endStickyEdit`.
 
-The library adds eleven theme-dependent tokens (`--cc-priority-*`,
-`--cc-status-*`, `--cc-severity-*`), each a filled chip's background printed
+Every token the library introduces is catalogued with its dark default in
+`COMPONENT_TOKENS` (the sticky-note paper and ink among them). Eleven are
+theme-dependent (`--cc-priority-*`, `--cc-status-*`, `--cc-severity-*`), each a
+filled chip's background printed
 with `--cc-bg` as its ink, and every pair is measured at 4.5:1 or better in
 both themes by `tests/unit/lib-components-styles.test.js`. Their light values
 are `COMPONENTS_LIGHT_THEME`, which repeats no key of the other two sets:
@@ -149,9 +178,9 @@ are `COMPONENTS_LIGHT_THEME`, which repeats no key of the other two sets:
 applyTheme(host, { ...LIGHT_THEME, ...LIB_LIGHT_THEME, ...COMPONENTS_LIGHT_THEME });
 ```
 
-## `lib/sandbox/` — taking a canvas off the page and putting it back
+## `sandbox/` — taking a canvas off the page and putting it back
 
-A third collection lives at `lib/sandbox/`: not widgets at all, but the five
+A third collection lives at `sandbox/`: not widgets at all, but the five
 utilities that turn a live session into something you can store, ship or reopen.
 The builder's custom types, slotted type and page store live in the site.
 
@@ -163,14 +192,14 @@ The builder's custom types, slotted type and page store live in the site.
 | `zip.js` | A dependency-free STORE-mode ZIP writer — `createZip` / `downloadZip` |
 | `export-static.js` | A session as a standalone, serverless static site — `buildStaticSite` / `downloadStaticSite` |
 
-Same optional-and-additive rule as the rest of `lib/`: nothing in `src/` imports
-it, and importing it registers nothing. `index.js` is a barrel only — every
+Same optional-and-additive rule as the rest of `.addons`: nothing in the engine
+imports it, and importing it registers nothing. `index.js` is a barrel only — every
 module stands alone and they import each other downwards and no other way
 (`export-static` → `serialize` + `zip`, `persistence` → `serialize`), so a page
 that only wants a zip writer pays for a zip writer.
 
 ```js
-import { saveSandbox, loadSandbox } from '../lib/sandbox/index.js';
+import { saveSandbox, loadSandbox } from 'cloudcanvas/sandbox';
 
 saveSandbox('my-board', session);
 const { pins, warnings } = loadSandbox('my-board', freshSession);
@@ -210,7 +239,21 @@ case) instead of retrying in a loop; asking again is another `markDirty()`. On a
 runtime with no `localStorage`, it no-ops silently: neither `onSave` nor
 `onError` fires, on the same reasoning as the rest of this module.
 
-Unlike the two collections above, this one has **no package export yet**. The
-`exports` map in `package.json` lists no `./sandbox` entry and carries no
-wildcard, so a consumer installing the package cannot reach these modules at
-all — in-repo and bundled use only until that entry is added.
+A document is read through one door, `readDocument` (`format.js`): a version it
+does not know, or a shape its version label does not describe (a v1 `pins` tree
+marked version 2, or the reverse), is refused with a `SandboxFormatError` rather
+than restored as an empty canvas.
+
+## `archetypes/` — page-building core types
+
+`section` (a titled `<section>` whose children nest in its body) and `table` (a
+data table whose `{columns, rows}` ride on its trait), on `cloudcanvas/core`
+alone. Registration is a call, so an unused import bundles to nothing:
+
+```js
+import { registerArchetypes } from 'cloudcanvas/archetypes';
+
+registerArchetypes();
+const pricing = root.blit({ type: 'section', fill: { title: 'Pricing' } });
+pricing.blit({ type: 'table', table: { columns: ['Plan', 'Price'], rows: [['Pro', '$9']] } });
+```

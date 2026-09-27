@@ -27,6 +27,51 @@ export const COMPONENT_STYLE_ID = 'cloudcanvas-components-styles';
 export const COMPONENT_DEFAULT_CSS = `${COMPONENTS_CARDS_CSS}${COMPONENTS_BOARD_CSS}${COMPONENTS_COMMS_CSS}`;
 
 /**
+ * The tokens this library introduces, each with its dark default: exactly the
+ * fallback every read of it in the component sheet carries, so the catalogue is
+ * the definition and applying it renders nothing new. A note's tilt and a chat
+ * avatar's colours are also written per instance; their entry is the value an
+ * instance without one reads. `tests/unit/tokens-defined.test.js` holds
+ * each fallback to its value here and every `--cc-*` read to a catalogue.
+ */
+export const COMPONENT_TOKENS = /* @__PURE__ */ Object.freeze({
+  '--cc-priority-urgent': '#fb7185',
+  '--cc-priority-high': '#fb923c',
+  '--cc-priority-normal': '#38bdf8',
+  '--cc-priority-low': '#94a3b8',
+  '--cc-status-nominal': '#34d399',
+  '--cc-status-warning': '#fbbf24',
+  '--cc-status-critical': '#f87171',
+  '--cc-severity-critical': '#f87171',
+  '--cc-severity-critical-glow': '0 0 16px rgba(248, 113, 113, 0.6)',
+  '--cc-severity-high': '#fbbf24',
+  '--cc-severity-normal': '#38bdf8',
+  '--cc-severity-info': '#34d399',
+  '--cc-flow-pulse': '0 0 20px rgba(56, 189, 248, 0.6)',
+  '--cc-type-display': '28px',
+  '--cc-weight-bold': '700',
+  '--cc-chat-avatar-bg': 'var(--cc-badge-bg, rgba(56, 189, 248, 0.15))',
+  '--cc-chat-avatar-text': 'var(--cc-badge-text, #38bdf8)',
+  '--cc-sticky-yellow': '#fef08a',
+  '--cc-sticky-yellow-ink': '#713f12',
+  '--cc-sticky-pink': '#fbcfe8',
+  '--cc-sticky-pink-ink': '#831843',
+  '--cc-sticky-cyan': '#bae6fd',
+  '--cc-sticky-cyan-ink': '#0c4a6e',
+  '--cc-sticky-lime': '#d9f99d',
+  '--cc-sticky-lime-ink': '#365314',
+  '--cc-sticky-orange': '#fed7aa',
+  '--cc-sticky-orange-ink': '#7c2d12',
+  '--cc-sticky-pin': '#e11d48',
+  '--cc-sticky-pin-shadow': '0 2px 4px rgba(0, 0, 0, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.5)',
+  '--cc-sticky-rule': 'rgba(0, 0, 0, 0.2)',
+  '--cc-sticky-swatch-ring': '0 0 0 1px rgba(0, 0, 0, 0.2)',
+  '--cc-sticky-swatch-ring-active': '0 0 0 2px currentColor',
+  '--cc-sticky-editor-bg': 'rgba(255, 255, 255, 0.7)',
+  '--cc-sticky-tilt': '0deg'
+});
+
+/**
  * Light-theme overrides for the tokens this library introduces.
  *
  * Mirrors `LIGHT_THEME` (`src/graphics/theme.js`) and `LIB_LIGHT_THEME`

@@ -28,8 +28,8 @@ import {
   setText,
   setVisible,
   PinEvent
-} from '../.plugin/index.js';
-import { asText } from './coerce.js';
+} from '../../.plugin/index.js';
+import { asText } from '../coerce.js';
 
 /** Registry names, and the `type`s a caller creates these Pins by. */
 const NAME = 'radio';
@@ -142,7 +142,7 @@ function updateGroup(pin, contents, bindings) {
 let handle = null;
 let groupHandle = null;
 
-/** @returns {import('../.plugin/pins/traits/define-component.js').ComponentHandle} */
+/** @returns {{name: string, createTrait: Function}} the component handle */
 export function registerRadio() {
   if (!handle) {
     handle = defineComponent({
@@ -156,7 +156,7 @@ export function registerRadio() {
   return handle;
 }
 
-/** @returns {import('../.plugin/pins/traits/define-component.js').ComponentHandle} */
+/** @returns {{name: string, createTrait: Function}} the component handle */
 export function registerRadioGroup() {
   if (!groupHandle) {
     groupHandle = defineComponent({

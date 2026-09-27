@@ -19,7 +19,7 @@
  *     knowing anything about who is listening.
  *
  * No colour, metric or class is decided here beyond *which* variant this is:
- * `lib/styles.js` states what a variant looks like, in tokens.
+ * `../styles.js` states what a variant looks like, in tokens.
  */
 
 import {
@@ -28,7 +28,7 @@ import {
   makeTextNode,
   setText,
   PinEvent
-} from '../.plugin/index.js';
+} from '../../.plugin/index.js';
 
 /** Registry name, and the `type` a caller creates a Pin by. */
 const NAME = 'button';
@@ -96,7 +96,7 @@ function applyVariant(root, requested, cache) {
  */
 let handle = null;
 
-/** @returns {import('../.plugin/pins/traits/define-component.js').ComponentHandle} */
+/** @returns {{name: string, createTrait: Function}} the component handle */
 export function registerButton() {
   if (!handle) {
     handle = defineComponent({

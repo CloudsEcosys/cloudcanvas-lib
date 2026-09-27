@@ -7,8 +7,8 @@
  * close the sheet.
  *
  * Data, not code; the class and token contracts governing what may appear below
- * are stated in `./styles-controls-css.js`, which is the half that opens the
- * sheet. `./styles.js` concatenates the two and nothing else imports either.
+ * are stated in `../forms/styles-css.js`, which is the half that opens the
+ * sheet. `../styles.js` concatenates the two and nothing else imports either.
  *
  * The environment queries live here rather than beside the rules they modify
  * because a media block has to come last to win: `@media (pointer: coarse)`

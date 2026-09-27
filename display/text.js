@@ -11,7 +11,7 @@
  * display signature, so the tag is fixed for the life of the Pin - which is the
  * honest shape of the decision anyway: a paragraph does not become a heading.
  *
- * Tone, size and weight are published as the modifier classes `lib/styles.js`
+ * Tone, size and weight are published as the modifier classes `../styles.js`
  * already selects on. They are written with `classList.toggle`, never
  * `className =`: the assignment would take the structural classes down with it,
  * and `toggle` only touches the attribute when the token set actually changes,
@@ -25,7 +25,7 @@ import {
   makeElement,
   makeTextNode,
   setText
-} from '../.plugin/index.js';
+} from '../../.plugin/index.js';
 
 /** Registry name, and the `type` a caller creates a Pin by. */
 const NAME = 'text';
@@ -85,7 +85,7 @@ function update(pin, contents, bindings) {
  */
 let handle = null;
 
-/** @returns {import('../.plugin/pins/traits/define-component.js').ComponentHandle} */
+/** @returns {{name: string, createTrait: Function}} the component handle */
 export function registerText() {
   if (!handle) {
     handle = defineComponent({

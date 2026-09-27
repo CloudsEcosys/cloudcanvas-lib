@@ -20,15 +20,8 @@
  * own alt when the image *is* showing.
  */
 
-import {
-  defineComponent,
-  makeElement,
-  makeTextNode,
-  primitives,
-  setAttr,
-  setText,
-  setVisible
-} from '../.plugin/index.js';
+import { primitives, setAttr, setText, setVisible } from '../../.plugin/index.js';
+import { defineWidget, leadingText } from './widget.js';
 
 const NAME = 'avatar';
 const ROOT_CLASS = 'cloudcanvas-lib-avatar';
@@ -37,8 +30,6 @@ const INITIALS_CLASS = 'cloudcanvas-lib-avatar-initials';
 
 /** `md` is the base rule, so it is the absence of a size modifier. */
 const SIZES = ['sm', 'lg'];
-
-const ALLOWED_KEYS = ['name', 'src', 'size'];
 
 /** First letter of each of the first two words, uppercased. */
 function initialsOf(name) {
@@ -51,21 +42,13 @@ function initialsOf(name) {
     .join('');
 }
 
-function build(pin, contentEl) {
-  const root = makeElement('div', ROOT_CLASS);
-  const image = makeElement('img', IMAGE_CLASS);
-  const initials = makeElement('span', INITIALS_CLASS);
-  const initialsText = makeTextNode(initials);
-
-  initials.setAttribute('role', 'img');
-  root.appendChild(image);
-  root.appendChild(initials);
-  contentEl.replaceChildren(root);
-
-  return { root, image, initials, initialsText };
+function bind(host) {
+  const root = host.querySelector(`.${ROOT_CLASS}`);
+  const initials = root.querySelector(`.${INITIALS_CLASS}`);
+  return { root, image: root.querySelector(`.${IMAGE_CLASS}`), initials, initialsText: leadingText(initials) };
 }
 
-function update(pin, contents, bindings, cache) {
+function render(bindings, contents, cache) {
   const name = contents.get('name');
   const label = name === undefined || name === null ? '' : String(name);
   // `safeUrl` answers with the fallback - here, the empty string - for anything
@@ -91,24 +74,19 @@ function update(pin, contents, bindings, cache) {
   setVisible(bindings.initials, !showImage);
 }
 
-let handle = null;
+const widget = /* @__PURE__ */ defineWidget({
+  name: NAME,
+  html: `<div class="${ROOT_CLASS}"><img class="${IMAGE_CLASS}"><span class="${INITIALS_CLASS}" role="img"></span></div>`,
+  allowedKeys: ['name', 'src', 'size'],
+  bind,
+  render
+});
 
-/** Register the Avatar display type once; a second call returns the same handle. */
-export function registerAvatar() {
-  if (!handle) {
-    handle = defineComponent({
-      name: NAME,
-      build,
-      update,
-      chrome: false,
-      allowedKeys: ALLOWED_KEYS
-    });
-  }
-  return handle;
-}
+/** Register the Avatar Pin component once; a second call returns the same handle. */
+export const registerAvatar = widget.register;
 
 /** Create an Avatar Pin on `session`; see `./text.js` on the option order. */
-export function createAvatarPin(session, options = {}) {
-  registerAvatar();
-  return session.createPin({ chrome: false, ...options, type: NAME });
-}
+export const createAvatarPin = widget.create;
+
+/** The core `avatar` type: `root.blit({ type: 'avatar', avatar: { name, src, size } })`. */
+export const avatarType = widget.define;

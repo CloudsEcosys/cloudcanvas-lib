@@ -22,8 +22,6 @@ import {
   KEY_ATTR,
   PinEvent,
   ConnectableTrait,
-  FocussableTrait,
-  ScopeTrait,
   contrastTextFor,
   makeElement,
   makeTextNode,
@@ -336,23 +334,4 @@ export function createChatInputPin(session, options = {}) {
   ], { x: 20, y: 420, width: 360, height: 48, draggable: false, selectable: false });
 
   return createComponentPin(session, registerChatInput, pinOptions, contents, false);
-}
-
-/**
- * Create a channel: a plain focussable scope Pin on the core card, which the
- * messages and the composer are placed inside.
- */
-export function createChatChannelPin(session, options = {}) {
-  return session.createPin({
-    id: options.id || 'chat_channel',
-    x: options.x !== undefined ? options.x : 60,
-    y: options.y !== undefined ? options.y : 60,
-    width: options.width || 420,
-    height: options.height || 500,
-    contents: new Map([
-      ['title', options.title || '#general-lounge'],
-      ['body', options.topic || 'Engineering discussion and threads']
-    ]),
-    traits: [new ScopeTrait(), new FocussableTrait({ padding: 40, maxZoom: 2.2 })]
-  });
 }

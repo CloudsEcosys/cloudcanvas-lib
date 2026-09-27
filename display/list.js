@@ -22,17 +22,17 @@
  * needs no rebinding.
  */
 
-import { PinEvent } from '../.plugin/pins/traits/base.js';
-import { defineComponent } from '../.plugin/pins/traits/define-component.js';
-import { traitRegistry } from '../.plugin/pins/traits/registry.js';
 import {
   KEY_ATTR,
+  PinEvent,
+  defineComponent,
   makeElement,
   makeTextNode,
   reconcileKeyedList,
-  setText
-} from '../.plugin/pins/traits/template-kit.js';
-import { injectLibStyles } from './styles.js';
+  setText,
+  traitRegistry
+} from '../../.plugin/index.js';
+import { injectLibStyles } from '../styles.js';
 
 /** Registry name, and the trait's own name. */
 export const LIST_TYPE = 'lib-list';
@@ -49,7 +49,7 @@ export const LIST_CLS = /* @__PURE__ */ Object.freeze({
  * The event a row activation transmits, bubbling up the scope chain.
  *
  * Namespaced, and it has to be: `select` alone is a core *Pin signal*
- * (`PIN_SIGNAL_TYPES` in `src/pins/traits/base.js`). `PinSignalBus` subscribes
+ * (`PIN_SIGNAL_TYPES` in `.plugin/pins/traits/base.js`). `PinSignalBus` subscribes
  * to that type on every registered Pin and the session routes it to
  * `handlePinSignal`, which reads a truthy payload as "this Pin is now selected"
  * and moves the selection cursor onto it - so a bare `select` would paint the
@@ -99,7 +99,7 @@ function update(pin, contents, bindings) {
  *
  * `data-cc-control` is the declaration that the canvas must stand down here -
  * both the pointer router and `DraggableTrait` read it (`CONTROL_SELECTOR` in
- * `src/pins/pin-element.js`) - so pressing a row selects it instead of dragging
+ * `.plugin/addons/trait.js`) - so pressing a row selects it instead of dragging
  * the Pin. `tabindex="0"` makes it operable by keyboard, which is the other half
  * of being a control.
  */
@@ -161,7 +161,7 @@ function activateFrom(pin, root, event, fromKeyboard) {
 
   if (fromKeyboard) {
     // Enter focuses a Pin and Space activates it (`KEY_BINDINGS` in
-    // `src/engine/keyboard.js`); a row that handles the key owns it outright.
+    // `.plugin/engine/keyboard.js`); a row that handles the key owns it outright.
     event.preventDefault();
     event.stopPropagation();
   }

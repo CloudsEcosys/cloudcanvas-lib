@@ -44,6 +44,9 @@ export const SANDBOX_FORMAT_VERSION = 2;
 /** The one earlier version the loader still reads, through `migrateV1`. */
 const LEGACY_VERSION = 1;
 
+/** The array each version keeps its node tree in: the shape a version label promises. */
+const NODES_KEY = /* @__PURE__ */ Object.freeze({ [LEGACY_VERSION]: 'pins', [SANDBOX_FORMAT_VERSION]: 'blits' });
+
 /** A document the loader cannot read: not a snapshot, or a version it does not know. */
 export class SandboxFormatError extends TypeError {
   constructor(message) {
@@ -59,18 +62,35 @@ function refuse(message) {
 }
 
 /**
+ * Refuse a document whose shape is not the one its version label promises: its
+ * node tree must be the array that version keeps it in. A mislabelled document -
+ * a v1 `pins` tree marked version 2, or the reverse - would otherwise restore
+ * as an empty canvas with no word said.
+ */
+function requireShape(data) {
+  const key = NODES_KEY[data.version];
+  if (Array.isArray(data[key])) return;
+  const other = NODES_KEY[data.version === LEGACY_VERSION ? SANDBOX_FORMAT_VERSION : LEGACY_VERSION];
+  const hint = Array.isArray(data[other]) ? `; it carries a "${other}" tree, so its version label is wrong` : '';
+  refuse(`sandbox: a version ${data.version} document needs a "${key}" array${hint}`);
+}
+
+/**
  * Any loadable snapshot as a v2 document: v2 as is, v1 (and a bare v1 root array,
  * which the v1 loader accepted) migrated.
  * @param {unknown} data a parsed snapshot
  * @param {string[]} [warnings] collector for what a migration could not carry
  * @returns {{version: 2, blits: object[]}}
- * @throws {SandboxFormatError} on anything else, after logging it
+ * @throws {SandboxFormatError} on anything else - an unknown version, or a shape
+ *   its version does not describe - after logging it
  */
 export function readDocument(data, warnings = []) {
   if (Array.isArray(data)) return migrateV1(data, warnings);
   if (!data || typeof data !== 'object') refuse('sandbox: a snapshot must be an object');
-  if (data.version === LEGACY_VERSION) return migrateV1(data, warnings);
-  if (data.version === SANDBOX_FORMAT_VERSION) return data;
-  return refuse(`sandbox: unsupported format version ${JSON.stringify(data.version ?? null)}; `
-    + `this build reads versions ${LEGACY_VERSION} and ${SANDBOX_FORMAT_VERSION}`);
+  if (data.version !== LEGACY_VERSION && data.version !== SANDBOX_FORMAT_VERSION) {
+    refuse(`sandbox: unsupported format version ${JSON.stringify(data.version ?? null)}; `
+      + `this build reads versions ${LEGACY_VERSION} and ${SANDBOX_FORMAT_VERSION}`);
+  }
+  requireShape(data);
+  return data.version === LEGACY_VERSION ? migrateV1(data, warnings) : data;
 }

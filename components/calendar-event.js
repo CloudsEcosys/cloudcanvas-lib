@@ -14,9 +14,7 @@
  */
 
 import {
-  FocussableTrait,
   PinEvent,
-  ScopeTrait,
   announce,
   makeElement,
   makeTextNode,
@@ -166,23 +164,4 @@ export function createCalendarEventPin(session, options = {}) {
   ], { x: 20, y: 80, width: 210, height: 105 });
 
   return createComponentPin(session, registerCalendarEvent, pinOptions, contents, false);
-}
-
-/**
- * Create a board: a plain focussable scope Pin on the core card, which the
- * events are placed inside.
- */
-export function createCalendarBoardPin(session, options = {}) {
-  return session.createPin({
-    id: options.id || 'calendar_board',
-    x: options.x !== undefined ? options.x : 540,
-    y: options.y !== undefined ? options.y : 60,
-    width: options.width || 560,
-    height: options.height || 480,
-    contents: new Map([
-      ['title', options.title || '📅 Incident & Event Tracking Board'],
-      ['body', options.description || 'Live SLA monitor, scheduled milestones and alerts']
-    ]),
-    traits: [new ScopeTrait(), new FocussableTrait({ padding: 40, maxZoom: 2.0 })]
-  });
 }

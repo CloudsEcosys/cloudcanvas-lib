@@ -4,26 +4,19 @@
  *
  * Badge: a small tinted chip, optionally dismissible.
  *
- * Two things here are shared with `./alert.js` rather than re-derived there, and
- * both are exported for exactly that reason:
- *
- *   - {@link toneSurface}, the tone-to-colour decision. A tone token is a *hue*,
- *     and a hue says nothing about whether text can be read on it - printing the
- *     raw tone as the text colour is how the previous component pass shipped
- *     3.6:1 labels. The fill and edge are the hue at a low alpha, left
- *     *translucent* so the browser composites them over the live card/canvas
- *     rather than a baked-in backdrop - that is what makes a toned Badge or Alert
- *     follow the theme instead of always painting the dark card it was designed
- *     on (the earlier pass composited to an opaque dark hex here, so a badge
- *     stayed dark in light mode). The foreground still has to be one concrete
- *     colour, and one colour cannot read on both a dark and a light composite, so
- *     it is computed for the dark card (`primitives.BADGE_SURFACE`) and emitted as
- *     the *fallback* of a theme-owned override token, exactly as the core's
- *     `createBadgeSVG` does.
- *   - {@link makeDismissButton}, the dismiss convention: one `dismiss` PinEvent,
- *     transmitted up the scope chain, whose default action - removing the Pin -
- *     a listener cancels with `preventDefault()`. Two widgets with two slightly
- *     different cancellation stories would be two conventions.
+ * {@link toneSurface}, the tone-to-colour decision, is shared with `./alert.js`
+ * rather than re-derived there, and exported for exactly that reason. A tone token is a
+ * *hue*, and a hue says nothing about whether text can be read on it - printing
+ * the raw tone as the text colour is how the previous component pass shipped
+ * 3.6:1 labels. The fill and edge are the hue at a low alpha, left *translucent*
+ * so the browser composites them over the live card/canvas rather than a baked-in
+ * backdrop - that is what makes a toned Badge or Alert follow the theme instead of
+ * always painting the dark card it was designed on. The foreground still has to
+ * be one concrete colour, and one colour cannot read on both a dark and a light
+ * composite, so it is computed for the dark card (`primitives.BADGE_SURFACE`) and
+ * emitted as the *fallback* of a theme-owned override token, exactly as the
+ * core's `createBadgeSVG` does. The dismiss button is `./widget.js`'s one
+ * convention: a cancellable `dismiss` whose default action removes the widget.
  *
  * The values land on the surface *tokens* the shared sheet already reads
  * (`--cc-badge-bg`, `--cc-badge-border`, `--cc-badge-text`), never as a `color`
@@ -39,17 +32,14 @@
  */
 
 import {
-  PinEvent,
   compositeOver,
   contrastTextFor,
-  defineComponent,
-  makeElement,
-  makeTextNode,
   primitives,
   setAttr,
   setText,
   setVisible
-} from '../.plugin/index.js';
+} from '../../.plugin/index.js';
+import { defineWidget, leadingText } from './widget.js';
 
 const NAME = 'badge';
 const ROOT_CLASS = 'cloudcanvas-lib-badge';
@@ -81,8 +71,6 @@ function alphaSuffix(byte) {
 /** `neutral` is the absence of a tone: the sheet's own `--cc-badge-*` stand. */
 const NEUTRAL = 'neutral';
 
-const ALLOWED_KEYS = ['text', 'tone', 'dismissible'];
-
 /**
  * The translucent fill and edge, plus the *dark-theme* foreground, for a tone -
  * or `null` for `neutral`.
@@ -109,35 +97,6 @@ export function toneSurface(tone) {
   };
 }
 
-/**
- * Ask to be dismissed, and remove self unless a listener said not to.
- *
- * @returns {boolean} whether the default removal actually ran
- */
-export function requestDismiss(pin) {
-  const event = new PinEvent('dismiss', { bubbles: true });
-  pin.transmit(event);
-  if (event.cancelled) return false;
-
-  const session = pin.session;
-  if (!session || typeof session.removePin !== 'function') return false;
-  session.removePin(pin.id);
-  return true;
-}
-
-/**
- * A real `<button type="button">`, which the framework's `CONTROL_SELECTOR`
- * already exempts from the drag gesture - no extra marking, and no div pretending.
- */
-export function makeDismissButton(pin, className) {
-  const button = makeElement('button', className);
-  button.setAttribute('type', 'button');
-  button.setAttribute('aria-label', 'Dismiss');
-  button.appendChild(document.createTextNode('×'));
-  button.addEventListener('click', () => requestDismiss(pin));
-  return button;
-}
-
 /** The tone declarations for one badge, or the empty string for `neutral`. */
 function toneStyle(tone) {
   const surface = toneSurface(tone);
@@ -151,16 +110,14 @@ function toneStyle(tone) {
     + `--cc-badge-text:var(${primitives.BADGE_TEXT_OVERRIDE_TOKEN}, ${surface.text});`;
 }
 
-function build(pin, contentEl) {
-  const root = makeElement('span', ROOT_CLASS);
-  const label = makeTextNode(root);
-  const dismiss = makeDismissButton(pin, DISMISS_CLASS);
-  root.appendChild(dismiss);
-  contentEl.replaceChildren(root);
-  return { root, label, dismiss };
+function bind(host, on, dismiss) {
+  const root = host.querySelector(`.${ROOT_CLASS}`);
+  const button = root.querySelector(`.${DISMISS_CLASS}`);
+  on(button, 'click', dismiss);
+  return { root, label: leadingText(root), dismiss: button };
 }
 
-function update(pin, contents, bindings, cache) {
+function render(bindings, contents, cache) {
   const tone = TONE_HUES[contents.get('tone')] ? contents.get('tone') : NEUTRAL;
 
   setText(bindings.label, contents.get('text'));
@@ -169,24 +126,20 @@ function update(pin, contents, bindings, cache) {
   setVisible(bindings.dismiss, contents.get('dismissible') === true);
 }
 
-let handle = null;
+const widget = /* @__PURE__ */ defineWidget({
+  name: NAME,
+  // A real `<button>`: `CONTROL_SELECTOR` already exempts it from the drag gesture.
+  html: `<span class="${ROOT_CLASS}"><button class="${DISMISS_CLASS}" type="button" aria-label="Dismiss">×</button></span>`,
+  allowedKeys: ['text', 'tone', 'dismissible'],
+  bind,
+  render
+});
 
-/** Register the Badge display type once; a second call returns the same handle. */
-export function registerBadge() {
-  if (!handle) {
-    handle = defineComponent({
-      name: NAME,
-      build,
-      update,
-      chrome: false,
-      allowedKeys: ALLOWED_KEYS
-    });
-  }
-  return handle;
-}
+/** Register the Badge Pin component once; a second call returns the same handle. */
+export const registerBadge = widget.register;
 
 /** Create a Badge Pin on `session`; see `./text.js` on the option order. */
-export function createBadgePin(session, options = {}) {
-  registerBadge();
-  return session.createPin({ chrome: false, ...options, type: NAME });
-}
+export const createBadgePin = widget.create;
+
+/** The core `badge` type: `root.blit({ type: 'badge', badge: { text, tone, dismissible } })`. */
+export const badgeType = widget.define;

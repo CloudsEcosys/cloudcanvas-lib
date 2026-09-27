@@ -19,15 +19,9 @@
  * because a fully tinted bar gives no reference for how full it is.
  */
 
-import {
-  defineComponent,
-  makeElement,
-  makeTextNode,
-  setAttr,
-  setText,
-  setVisible
-} from '../.plugin/index.js';
-import { toNumber } from './coerce.js';
+import { setAttr, setText, setVisible } from '../../.plugin/index.js';
+import { toNumber } from '../coerce.js';
+import { defineWidget, leadingText } from './widget.js';
 
 const NAME = 'progress';
 const ROW_CLASS = 'cloudcanvas-lib-progress-row';
@@ -39,22 +33,13 @@ const TONES = ['success', 'warning', 'danger'];
 
 const DEFAULT_MAX = 100;
 
-const ALLOWED_KEYS = ['value', 'max', 'label', 'tone'];
-
-function build(pin, contentEl) {
-  const root = makeElement('div', ROW_CLASS);
-  const caption = makeElement('span', LABEL_CLASS);
-  const captionText = makeTextNode(caption);
-  const bar = makeElement('progress', BAR_CLASS);
-
-  root.appendChild(caption);
-  root.appendChild(bar);
-  contentEl.replaceChildren(root);
-
-  return { root, caption, captionText, bar };
+function bind(host) {
+  const root = host.querySelector(`.${ROW_CLASS}`);
+  const caption = root.querySelector(`.${LABEL_CLASS}`);
+  return { root, caption, captionText: leadingText(caption), bar: root.querySelector(`.${BAR_CLASS}`) };
 }
 
-function update(pin, contents, bindings, cache) {
+function render(bindings, contents, cache) {
   const rawMax = toNumber(contents.get('max'), DEFAULT_MAX);
   // A non-positive max is not a bar, it is a division by zero in the renderer.
   const max = rawMax > 0 ? rawMax : DEFAULT_MAX;
@@ -76,24 +61,19 @@ function update(pin, contents, bindings, cache) {
   }
 }
 
-let handle = null;
+const widget = /* @__PURE__ */ defineWidget({
+  name: NAME,
+  html: `<div class="${ROW_CLASS}"><span class="${LABEL_CLASS}"></span><progress class="${BAR_CLASS}"></progress></div>`,
+  allowedKeys: ['value', 'max', 'label', 'tone'],
+  bind,
+  render
+});
 
-/** Register the Progress display type once; a second call returns the same handle. */
-export function registerProgress() {
-  if (!handle) {
-    handle = defineComponent({
-      name: NAME,
-      build,
-      update,
-      chrome: false,
-      allowedKeys: ALLOWED_KEYS
-    });
-  }
-  return handle;
-}
+/** Register the Progress Pin component once; a second call returns the same handle. */
+export const registerProgress = widget.register;
 
 /** Create a Progress Pin on `session`; see `./text.js` on the option order. */
-export function createProgressPin(session, options = {}) {
-  registerProgress();
-  return session.createPin({ chrome: false, ...options, type: NAME });
-}
+export const createProgressPin = widget.create;
+
+/** The core `progress` type: `root.blit({ type: 'progress', progress: { value, max, label, tone } })`. */
+export const progressType = widget.define;

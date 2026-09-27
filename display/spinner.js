@@ -5,12 +5,12 @@
  * Spinner: an indeterminate busy indicator.
  *
  * One element and no animation code. `cloudcanvas-lib-spinner` is the contract
- * with `lib/styles.js`: the border ring, the `@keyframes` rotation, and the
+ * with `../styles.js`: the border ring, the `@keyframes` rotation, and the
  * `@media (prefers-reduced-motion: reduce)` override that slows the turn to six
  * seconds all live in the shared sheet, so one global rule covers every animated
  * widget in the kit instead of N inline `<style>` tags each having to remember
  * the same media query. The codebase already answers reduced motion this way
- * (`src/graphics/styles-css.js`).
+ * (`.plugin/graphics/styles-css.js`).
  *
  * The ring is not a separate decorative child, because there is nothing to hide
  * from it: the element has no text content, its shape is painted entirely by
@@ -19,26 +19,22 @@
  * which is the only failure mode this widget really has.
  */
 
-import { defineComponent, makeElement, setAttr } from '../.plugin/index.js';
+import { setAttr } from '../../.plugin/index.js';
+import { defineWidget } from './widget.js';
 
 const NAME = 'spinner';
 
-/** The animated element. `lib/styles.js` owns the keyframes and the reduced-motion stop. */
+/** The animated element. `../styles.js` owns the keyframes and the reduced-motion stop. */
 const ROOT_CLASS = 'cloudcanvas-lib-spinner';
 
 /** Named rather than anonymous: a busy indicator with no name announces nothing. */
 const DEFAULT_LABEL = 'Loading';
 
-const ALLOWED_KEYS = ['label'];
-
-function build(pin, contentEl) {
-  const root = makeElement('div', ROOT_CLASS);
-  root.setAttribute('role', 'status');
-  contentEl.replaceChildren(root);
-  return { root };
+function bind(host) {
+  return { root: host.querySelector(`.${ROOT_CLASS}`) };
 }
 
-function update(pin, contents, bindings, cache) {
+function render(bindings, contents, cache) {
   const label = contents.get('label');
   const text = label === undefined || label === null || String(label) === ''
     ? DEFAULT_LABEL
@@ -47,24 +43,19 @@ function update(pin, contents, bindings, cache) {
   setAttr(bindings.root, 'aria-label', text, cache, 'label');
 }
 
-let handle = null;
+const widget = /* @__PURE__ */ defineWidget({
+  name: NAME,
+  html: `<div class="${ROOT_CLASS}" role="status"></div>`,
+  allowedKeys: ['label'],
+  bind,
+  render
+});
 
-/** Register the Spinner display type once; a second call returns the same handle. */
-export function registerSpinner() {
-  if (!handle) {
-    handle = defineComponent({
-      name: NAME,
-      build,
-      update,
-      chrome: false,
-      allowedKeys: ALLOWED_KEYS
-    });
-  }
-  return handle;
-}
+/** Register the Spinner Pin component once; a second call returns the same handle. */
+export const registerSpinner = widget.register;
 
 /** Create a Spinner Pin on `session`; see `./text.js` on the option order. */
-export function createSpinnerPin(session, options = {}) {
-  registerSpinner();
-  return session.createPin({ chrome: false, ...options, type: NAME });
-}
+export const createSpinnerPin = widget.create;
+
+/** The core `spinner` type: `root.blit({ type: 'spinner', spinner: { label } })`. */
+export const spinnerType = widget.define;

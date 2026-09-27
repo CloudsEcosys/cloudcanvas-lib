@@ -51,8 +51,6 @@ export {
   registerTelemetryGauge,
   createTelemetryPin,
   setTelemetryReading,
-  startTelemetrySimulation,
-  stopTelemetrySimulation,
   telemetryStatusOf
 } from './telemetry-gauge.js';
 
@@ -102,7 +100,6 @@ export {
   registerChatInput,
   createChatMessagePin,
   createChatInputPin,
-  createChatChannelPin,
   toggleChatReaction,
   sendChatMessage
 } from './chat-message.js';
@@ -115,7 +112,6 @@ export {
   RESOLVED_EVENT,
   registerCalendarEvent,
   createCalendarEventPin,
-  createCalendarBoardPin,
   acknowledgeCalendarEvent,
   resolveCalendarEvent
 } from './calendar-event.js';
@@ -128,13 +124,14 @@ export { SnapToGridTrait } from './traits/snap-to-grid.js';
 /* ------------------ STYLES ------------------ */
 
 /**
- * The library's stylesheet and its light-theme supplement. `COMPONENTS_LIGHT_THEME`
+ * The library's stylesheet, its token catalogue and its light-theme supplement. `COMPONENTS_LIGHT_THEME`
  * repeats none of the core's or the base kit's keys, so the three spread together:
  * `applyTheme(host, { ...LIGHT_THEME, ...LIB_LIGHT_THEME, ...COMPONENTS_LIGHT_THEME })`.
  */
 export {
   COMPONENT_DEFAULT_CSS,
   COMPONENT_STYLE_ID,
+  COMPONENT_TOKENS,
   COMPONENTS_LIGHT_THEME,
   injectComponentStyles
 } from './styles.js';

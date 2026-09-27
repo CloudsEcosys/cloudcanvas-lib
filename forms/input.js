@@ -32,8 +32,8 @@ import {
   setText,
   setVisible,
   PinEvent
-} from '../.plugin/index.js';
-import { asText } from './coerce.js';
+} from '../../.plugin/index.js';
+import { asText } from '../coerce.js';
 
 /** Registry name, and the `type` a caller creates a Pin by. */
 const NAME = 'input';
@@ -141,7 +141,7 @@ function applyState(control, contents, cache, key) {
 /** Lazy, memoised registration; see `./button.js` on why it is never at import time. */
 let handle = null;
 
-/** @returns {import('../.plugin/pins/traits/define-component.js').ComponentHandle} */
+/** @returns {{name: string, createTrait: Function}} the component handle */
 export function registerInput() {
   if (!handle) {
     handle = defineComponent({
