@@ -22,6 +22,8 @@
  *   - `chrome` is read off the element's class list, the one field with no public
  *     reader; `bordered`, `layout`, `gap`, `selectableText` and `style` (only the
  *     allow-listed overrides set inline) are public accessors.
+ *   - `class` is the authored names a load declared (`data-class`, written by
+ *     `restoreTree`) that the element still wears; engine and trait classes never.
  */
 
 import { createLogger, traitRegistry } from '../../.plugin/index.js';
@@ -116,6 +118,16 @@ function writeSurface(pin, spec) {
   if (pin.selectableText === true) spec.selectableText = true;
   const style = typeof pin.styleOverrides === 'object' ? pin.styleOverrides : null;
   if (style && Object.keys(style).length > 0) spec.style = style;
+  const names = authoredClassesOf(pin.element);
+  if (names) spec.class = names;
+}
+
+/** The authored class names an element was given and still wears, or null. */
+function authoredClassesOf(element) {
+  const declared = element ? element.getAttribute('data-class') : null;
+  if (!declared) return null;
+  const worn = declared.split(/\s+/).filter((name) => name && element.classList.contains(name));
+  return worn.length > 0 ? worn.join(' ') : null;
 }
 
 /**

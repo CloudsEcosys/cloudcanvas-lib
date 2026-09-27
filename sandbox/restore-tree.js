@@ -25,7 +25,11 @@
  *     enforces (`isReservedFieldKey`);
  *   - a URL-bearing value (`src`, `href`, `url`, `poster`) the engine's `safeUrl`
  *     refuses (`javascript:`, `data:text/html`, ...), in `fill` or a slot field.
- *     Without `api.primitives.safeUrl` every such value is refused.
+ *     Without `api.primitives.safeUrl` every such value is refused;
+ *   - a `class` name that is not a plain CSS identifier, is over 64 characters, or
+ *     claims one of the engine's own namespaces (`cloudcanvas-`, `cc-`, `is-`): a
+ *     saved canvas may style a blit, never forge its engine state; every name past
+ *     the 32nd kept, and a `class` that is not a string, are dropped too.
  * Unknown display types and traits warn and are skipped, never thrown: a canvas
  * that restores nine blits out of ten beats one that restores none.
  */
@@ -36,7 +40,7 @@
  */
 export const NODE_KEYS = /* @__PURE__ */ Object.freeze([
   'id', 'type', 'x', 'y', 'z', 'w', 'h', 'fill', 'blits', 'reload', 'chrome', 'bordered',
-  'layout', 'gap', 'selectableText', 'style', 'port', 'with'
+  'layout', 'gap', 'selectableText', 'style', 'class', 'port', 'with'
 ]);
 
 /**
@@ -59,8 +63,11 @@ export function restoreTree(api, session, nodes, warnings) {
       prototypeKeys: ['__proto__', 'constructor', 'prototype'],
       urlKeys: ['src', 'href', 'url', 'poster'],
       flowModes: ['row', 'column', 'grid'],
+      engineClassPrefixes: ['cloudcanvas-', 'cc-', 'is-'],
+      maxClasses: 32,
+      maxClassLength: 64,
       nodeKeys: ['id', 'type', 'x', 'y', 'z', 'w', 'h', 'fill', 'blits', 'reload', 'chrome', 'bordered',
-        'layout', 'gap', 'selectableText', 'style', 'port', 'with']
+        'layout', 'gap', 'selectableText', 'style', 'class', 'port', 'with']
     }
   };
   return (Array.isArray(nodes) ? nodes : [])
@@ -79,6 +86,7 @@ function restoreNode(context, node, parent) {
   for (let index = 0; index < children.length; index += 1) restoreNode(context, children[index], pin);
 
   applyLayout(context, node, pin);
+  applyClasses(context, node, pin);
   // Re-validated key by key through the engine's own mutator, so a hand-edited map cannot write blind.
   const api = context.api;
   if (node.style && typeof node.style === 'object' && typeof api.applyPinStyleMap === 'function') {
@@ -215,6 +223,43 @@ function applyLayout(context, node, pin) {
 }
 
 /**
+ * A spec's authored `class` names onto the element, each a plain identifier outside
+ * the engine's namespaces, at most `maxClasses` of them. The kept set is mirrored in
+ * `data-class`, the record the writer reads back: the class list also holds engine
+ * and trait classes.
+ */
+function applyClasses(context, node, pin) {
+  if (node.class === undefined || node.class === null || !pin.element) return;
+  if (typeof node.class !== 'string') { context.warn('pin "' + node.id + '": class is not a string, dropped'); return; }
+  const cap = context.rules.maxClasses;
+  const kept = [];
+  const names = node.class.split(/\s+/).filter(Boolean);
+  for (let index = 0; index < names.length; index += 1) {
+    const name = names[index];
+    if (kept.length === cap) {
+      context.warn('pin "' + node.id + '": dropped ' + (names.length - index) + ' class names over the cap of ' + cap);
+      break;
+    }
+    if (!isAuthoredClass(context, name)) context.warn('pin "' + node.id + '": dropped class "' + name.slice(0, context.rules.maxClassLength) + '"');
+    else if (kept.indexOf(name) === -1) kept.push(name);
+  }
+  if (kept.length === 0) return;
+  pin.element.classList.add.apply(pin.element.classList, kept);
+  pin.element.setAttribute('data-class', kept.join(' '));
+}
+
+/**
+ * Whether a class name may be authored: a plain CSS identifier within the length
+ * cap, outside the engine's namespaces. `__proto__` passes as a literal class: the
+ * name only ever reaches `classList` and a string array, never an object key.
+ */
+function isAuthoredClass(context, name) {
+  const rules = context.rules;
+  const engine = rules.engineClassPrefixes.some(function (prefix) { return name.indexOf(prefix) === 0; });
+  return !engine && name.length <= rules.maxClassLength && /^[A-Za-z_][A-Za-z0-9_-]*$/.test(name);
+}
+
+/**
  * The format's reactions (`{id, source, signal, action: {type, target, params}}`)
  * in the reaction store's shape; the store validates each on load.
  * @param {object[]} list
@@ -236,5 +281,6 @@ export function reactionsFromWire(list) {
 /** Every function an exported page embeds, in source form: the whole loader. */
 export const LOADER_FUNCTIONS = /* @__PURE__ */ Object.freeze([
   restoreTree, restoreNode, isKnown, traitNamesOf, optionsOf, safeFill, fillKeyProblem,
-  safeSlots, slotFieldProblem, isUnsafeUrl, attachTraits, applyLayout, reactionsFromWire
+  safeSlots, slotFieldProblem, isUnsafeUrl, attachTraits, applyLayout, applyClasses, isAuthoredClass,
+  reactionsFromWire
 ]);

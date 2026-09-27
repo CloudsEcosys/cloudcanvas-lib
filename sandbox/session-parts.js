@@ -12,7 +12,7 @@
  *   - `theme` - the host's inline `--cc-*` tokens, read straight off the host, so
  *     the DOM is the store; a load with none clears the host to its dark fallback.
  *   - product parts ({@link PART_KEYS}) - state a product layer owns, such as the
- *     builder's sitemap. The format carries the key; the product attaches the store
+ *     builder's sitemap (its `pages` and their `folders`). The format carries the key; the product attaches the store
  *     for a session ({@link attachSessionPart}), so this layer never imports it. A
  *     part loaded before its store is attached is held, handed over on attach, and
  *     written back unchanged meanwhile, so a load-then-save never drops it.
@@ -27,7 +27,7 @@ import { reactionsFromWire } from './restore-tree.js';
 const logger = /* @__PURE__ */ createLogger('sandbox/session-parts');
 
 /** The product-owned session keys the format carries, in document order. */
-export const PART_KEYS = /* @__PURE__ */ Object.freeze(['pages']);
+export const PART_KEYS = /* @__PURE__ */ Object.freeze(['pages', 'folders']);
 
 /** @type {WeakMap<object, Map<string, SessionPart>>} session -> attached parts */
 const ATTACHED = /* @__PURE__ */ new WeakMap();
