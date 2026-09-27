@@ -33,7 +33,7 @@
  */
 
 import { createLogger } from '../../.plugin/index.js';
-import { deserializeSession, serializeSession } from './serialize.js';
+import { SandboxFormatError, deserializeSession, serializeSession } from './serialize.js';
 
 const logger = /* @__PURE__ */ createLogger('sandbox/persistence');
 
@@ -72,8 +72,9 @@ export function saveSandbox(key, session) {
 /**
  * Restore a saved snapshot into a session.
  *
- * A key that was never saved, and a key holding text that is not a snapshot,
- * both resolve to `null`: neither is an exception the caller can act on
+ * A key that was never saved, a key holding text that is not a snapshot, and a
+ * snapshot in a format version this build cannot read all resolve to `null`; a v1
+ * save is migrated on the way in (`./migrate-v1.js`): neither is an exception the caller can act on
  * differently, and a sandbox picker that throws on one stale entry is a sandbox
  * picker nobody can open.
  *
@@ -97,7 +98,13 @@ export function loadSandbox(key, session) {
   }
 
   if (!data || typeof data !== 'object') return null;
-  return deserializeSession(session, data);
+  try {
+    return deserializeSession(session, data);
+  } catch (error) {
+    // Already logged by the format door; an unreadable save is a stale entry, not a crash.
+    if (error instanceof SandboxFormatError) return null;
+    throw error;
+  }
 }
 
 /**
@@ -171,11 +178,8 @@ function unloadTarget() {
  * asks again. Silently re-queueing a write that a full store already refused
  * would turn one failure into a loop of them.
  *
- * A few lines over this codebase's usual ceiling for one function, for the same
- * reason `restoreTree` is: its four steps are already extracted and none is a
- * dozen lines, but all four read and write the same `timer` / `dirty` /
- * `stopped` triple, and that state is the closure. Hoisting them out would mean
- * inventing an object to carry it.
+ * Its four steps are nested rather than hoisted because all four read and write
+ * the same `timer` / `dirty` / `stopped` triple, and that state is the closure.
  *
  * @param {string} key sandbox name, un-namespaced
  * @param {CloudCanvasSession} session the live session to snapshot
@@ -197,7 +201,6 @@ export function autoSaveSession(key, session, options = {}) {
   function write() {
     timer = null;
     dirty = false;
-
     try {
       // `false` means there was no storage at all: nothing saved, nothing wrong.
       if (saveSandbox(key, session) && onSave) onSave(key);
@@ -208,7 +211,6 @@ export function autoSaveSession(key, session, options = {}) {
 
   function markDirty() {
     if (stopped) return;
-
     dirty = true;
     if (timer !== null) clearTimeout(timer);
     timer = setTimeout(write, debounceMs);
@@ -216,14 +218,12 @@ export function autoSaveSession(key, session, options = {}) {
 
   function flush() {
     if (stopped || !dirty) return;
-
     if (timer !== null) clearTimeout(timer);
     write();
   }
 
   function stop() {
     if (stopped) return;
-
     stopped = true;
     dirty = false;
     if (timer !== null) clearTimeout(timer);

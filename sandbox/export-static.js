@@ -13,15 +13,19 @@
  * IIFE build (see also `scripts/build.js`).
  *
  * THE DUPLICATION THAT ISN'T. The exported page cannot import
- * `./serialize.js` - it has only the bundle - so it needs the reconstruction
+ * `./restore-tree.js` - it has only the bundle - so it needs the reconstruction
  * logic inline. Rather than hand-writing a second copy against
  * `window.CloudCanvas` (which drifts from the real one the first time either
  * side changes, and drifts silently, because nothing tests the copy), the page
- * embeds `String(restoreTree)`: the *same function*, in source form. That is
- * what `restoreTree` being self-contained buys - it takes its whole dependency
- * surface as an `api` argument, so its text is a complete implementation
- * wherever it lands. One implementation, exercised by the unit round-trip test
- * and by the file:// browser test at once.
+ * embeds `LOADER_FUNCTIONS` in source form: the *same functions*. That is what
+ * the loader being self-contained buys - it takes its whole dependency surface
+ * as an `api` argument, so its text is a complete implementation wherever it
+ * lands. One implementation, exercised by the unit round-trip test and by the
+ * file:// browser test at once.
+ *
+ * The embedded snapshot is always a v2 document (`./format.js`): a v1 one handed
+ * to `renderStaticHtml` is migrated first. A page exported before v2 keeps its own
+ * v1 loader inline and needs nothing from this module to keep loading.
  *
  * The bundle bytes are a parameter, not a read: this module runs in a browser,
  * where there is no filesystem. `downloadStaticSite` fetches them for you;
@@ -35,7 +39,9 @@
  * built to a device size, and a fixed `width=` would only fight it.
  */
 
-import { restoreTree, serializeSession } from './serialize.js';
+import { readDocument } from './format.js';
+import { LOADER_FUNCTIONS } from './restore-tree.js';
+import { serializeSession } from './write.js';
 import { createZip, downloadZip } from './zip.js';
 
 /** The bundle's name inside the archive, and the src the page asks for. */
@@ -125,7 +131,8 @@ function escapeJsonForScript(json) {
 /* ------------------ PAGE GENERATION ------------------ */
 
 /**
- * The boot script: parse the embedded snapshot, start a session, rebuild it.
+ * The boot script: the loader's functions, then parse the embedded v2 snapshot,
+ * start a session, rebuild it.
  *
  * `readyState` is checked as well as listened for. The script tag sits last in
  * the body, so `DOMContentLoaded` has not fired yet and the listener is the one
@@ -136,7 +143,7 @@ function escapeJsonForScript(json) {
 function bootScript() {
   return [
     '(function () {',
-    `  var restoreTree = ${restoreTree.toString()};`,
+    LOADER_FUNCTIONS.map(String).join('\n'),
     '',
     '  function boot() {',
     `    var raw = document.getElementById(${JSON.stringify(DATA_ID)}).textContent;`,
@@ -145,9 +152,9 @@ function bootScript() {
     '    var session = window.CloudCanvas.createCanvasSession({',
     `      container: document.getElementById(${JSON.stringify(ROOT_ID)})`,
     '    });',
-    '    restoreTree(window.CloudCanvas, session, data.pins, warnings);',
-    '    if (data.bindings && data.bindings.length && window.CloudCanvas.attachReactions) {',
-    '      window.CloudCanvas.attachReactions(session, { bindings: data.bindings });',
+    '    restoreTree(window.CloudCanvas, session, data.blits, warnings);',
+    '    if (data.reactions && data.reactions.length && window.CloudCanvas.attachReactions) {',
+    '      window.CloudCanvas.attachReactions(session, { bindings: reactionsFromWire(data.reactions) });',
     '    }',
     '    if (data.theme && window.CloudCanvas.applyTheme) {',
     '      window.CloudCanvas.applyTheme(session.hostElement, data.theme);',
@@ -181,18 +188,18 @@ function bootScript() {
 /**
  * The generated `index.html` for a snapshot.
  *
- * @param {{version: number, pins: object[]}} snapshot
+ * @param {{version: number, blits: object[]}} snapshot a v2 document (v1 is migrated)
  * @param {object} [options]
  * @param {string} [options.title] document title
  * @param {{width: number, height: number}} [options.page] size the mounted root
  *   to this box, CSS pixels, instead of filling the window
  * @returns {string}
- * @throws {TypeError} when `page` is given but is not a box
+ * @throws {TypeError} when `page` is given but is not a box, or the snapshot is unreadable
  */
 export function renderStaticHtml(snapshot, options = {}) {
   const title = escapeHtml(options.title || DEFAULT_TITLE);
   const page = normalizePage(options.page);
-  const json = escapeJsonForScript(JSON.stringify(snapshot));
+  const json = escapeJsonForScript(JSON.stringify(readDocument(snapshot)));
 
   return [
     '<!doctype html>',

@@ -6,19 +6,19 @@
  * shares, kept here so no page carries its own half-right copy.
  *
  * `clearSession` is the inverse of `deserializeSession` (`./serialize.js`): it
- * empties exactly the four things a snapshot restores - the Pin tree, the
- * reaction bindings, the page store and the host's theme tokens - so a canvas
+ * empties exactly what a snapshot restores - the Pin tree and every session part
+ * (`./session-parts.js`: reactions, product parts such as the builder's page
+ * store, and the host's theme tokens) - so a canvas
  * cleared here and then restored is byte-identical to one restored fresh. A
  * clear that dropped the Pins but kept the sitemap naming them was the sandbox's
  * standing defect (`tests/unit/website-sandbox-templates-golden.test.js`).
  */
 
-import { applyTheme, reactionsFor } from '../../.plugin/index.js';
-import { pagesFor } from './pages.js';
+import { clearSessionParts } from './session-parts.js';
 
 /**
- * Empty a session: every root Pin (and so every descendant), every reaction
- * binding, every page entry, and the theme tokens inline on the host.
+ * Empty a session: every root Pin (and so every descendant), then every session
+ * part - reaction bindings, product parts, and the theme tokens inline on the host.
  *
  * Roots are snapshotted before removal because `removePin` mutates the set
  * being walked. A session with no host no-ops the theme through `applyTheme`'s
@@ -35,8 +35,6 @@ export function clearSession(session) {
   const roots = Array.from(session.pinManager.getRootPins());
   for (const pin of roots) session.removePin(pin.id);
 
-  reactionsFor(session).clear();
-  pagesFor(session).clear();
-  applyTheme(session.hostElement, null);
+  clearSessionParts(session);
   return roots.length;
 }

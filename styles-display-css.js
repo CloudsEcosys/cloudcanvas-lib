@@ -22,7 +22,7 @@ export const LIB_DISPLAY_CSS = `
 /* ------------------ SLOTTED CUSTOM TYPES ------------------ */
 
 /*
- * A slotted custom type (\`sandbox/slotted-type.js\`) stacks its named regions -
+ * A slotted custom type (\`.site/slotted-type.js\`) stacks its named regions -
  * a header over a body - and the separation is the whole point of the shape, so
  * it is drawn here rather than left to the content flow: a border between
  * adjacent regions, and the first (header) region carried in the body text

@@ -1,0 +1,76 @@
+/**
+ * CloudCanvas - NeoTec, LLC, Richard Christopher
+ * Written by Richard Christopher, Copyright 2026 NeoTec, LLC
+ *
+ * The sandbox save format, version 2, and the one door every load goes through.
+ *
+ * A document is a tree of blit specs - the plain object a core blit's `spec`
+ * getter returns and `root.blit(spec)` consumes - plus the session parts that
+ * name blits rather than living in one:
+ *
+ *   { version: 2,
+ *     blits:      Spec[],                        roots, in paint order
+ *     reactions?: {id, source, signal, action: {type, target, params}}[],
+ *     pages?:     {id, name, home}[],            the builder's sitemap
+ *     theme?:     {'--cc-*': value} }            the host's token overrides
+ *
+ *   Spec = { id, x, y, z?, w?, h?, type?, fill?, <trait>: true, reload?, chrome?: false,
+ *            bordered?: false, layout?, gap?, selectableText?: true, style?, blits?: Spec[] }
+ *
+ * `type` is a registered display type; `fill` is the content by key (a type's text
+ * slots, plus any structured value such as a slotted instance's `slots`); a named
+ * trait is a key set to `true`, as in a core spec; `blits` are the children, in
+ * paint order. The remaining keys ride as the `data-*` a core blit would carry.
+ * Every key is left out at its default (`z` 0, no size, no fill, `reload`
+ * 'active', card surface and border on, `layout` 'free', stylesheet gap, no text
+ * selection, no style, no children) and every session part when it is empty, so
+ * an untouched canvas is the smallest document the format allows. `id` is the
+ * element id a root indexes a blit under, and what reactions and pages name.
+ *
+ * Not stored: camera, trait state beyond a name, physics and vectors, and custom
+ * type definitions (a global library of their own; an instance carries what it
+ * needs in `fill`). Written by `./write.js`, loaded by `./restore-tree.js` and
+ * `./session-parts.js`; v1 is migrated on load by `./migrate-v1.js`.
+ */
+
+import { createLogger } from '../../.plugin/index.js';
+import { migrateV1 } from './migrate-v1.js';
+
+const logger = /* @__PURE__ */ createLogger('sandbox/format');
+
+/** The version every save writes. */
+export const SANDBOX_FORMAT_VERSION = 2;
+
+/** The one earlier version the loader still reads, through `migrateV1`. */
+const LEGACY_VERSION = 1;
+
+/** A document the loader cannot read: not a snapshot, or a version it does not know. */
+export class SandboxFormatError extends TypeError {
+  constructor(message) {
+    super(message);
+    this.name = 'SandboxFormatError';
+  }
+}
+
+/** Log through the logger seam, then throw: a bad document is an error a caller must see. */
+function refuse(message) {
+  logger.error(message);
+  throw new SandboxFormatError(message);
+}
+
+/**
+ * Any loadable snapshot as a v2 document: v2 as is, v1 (and a bare v1 root array,
+ * which the v1 loader accepted) migrated.
+ * @param {unknown} data a parsed snapshot
+ * @param {string[]} [warnings] collector for what a migration could not carry
+ * @returns {{version: 2, blits: object[]}}
+ * @throws {SandboxFormatError} on anything else, after logging it
+ */
+export function readDocument(data, warnings = []) {
+  if (Array.isArray(data)) return migrateV1(data, warnings);
+  if (!data || typeof data !== 'object') refuse('sandbox: a snapshot must be an object');
+  if (data.version === LEGACY_VERSION) return migrateV1(data, warnings);
+  if (data.version === SANDBOX_FORMAT_VERSION) return data;
+  return refuse(`sandbox: unsupported format version ${JSON.stringify(data.version ?? null)}; `
+    + `this build reads versions ${LEGACY_VERSION} and ${SANDBOX_FORMAT_VERSION}`);
+}

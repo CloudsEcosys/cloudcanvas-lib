@@ -153,12 +153,13 @@ applyTheme(host, { ...LIGHT_THEME, ...LIB_LIGHT_THEME, ...COMPONENTS_LIGHT_THEME
 
 A third collection lives at `lib/sandbox/`: not widgets at all, but the five
 utilities that turn a live session into something you can store, ship or reopen.
+The builder's custom types, slotted type and page store live in the site.
 
 | Module | What it is |
 | --- | --- |
-| `serialize.js` | A session as a plain JSON tree, and back — `serializeSession` / `deserializeSession` |
+| `serialize.js` | A session as a v2 document of nested blit specs, and back — `serializeSession` / `deserializeSession`; v1 saves migrate on load (`migrate-v1.js`), the schema heads `format.js` |
 | `persistence.js` | Named snapshots in `localStorage` — `saveSandbox` / `loadSandbox` / `listSandboxKeys` / `deleteSandbox`, plus the debounced `autoSaveSession` |
-| `custom-types.js` | User-defined Pin presets in `localStorage`, global to the origin and separate from any snapshot — `saveCustomType` / `getCustomType` / `listCustomTypes` / `deleteCustomType`, with `normalizeCustomType` / `customTypeContents` for placing one |
+| `reserved-keys.js` | The reserved content-key rule the loader and the builder's custom-type gate share — `isReservedFieldKey` |
 | `zip.js` | A dependency-free STORE-mode ZIP writer — `createZip` / `downloadZip` |
 | `export-static.js` | A session as a standalone, serverless static site — `buildStaticSite` / `downloadStaticSite` |
 
@@ -176,7 +177,7 @@ const { pins, warnings } = loadSandbox('my-board', freshSession);
 ```
 
 What a snapshot does and does not carry is stated in full at the top of
-`serialize.js`, and it is worth reading before relying on one: position, size,
+`format.js` and `write.js`, and it is worth reading before relying on one: position, size,
 `contents`, `chrome`, `bordered` and the display type survive; traits come back
 by **name only** (freshly initialised, not the instances you had), and particle
 physics state does not come back at all. Anything that must survive the

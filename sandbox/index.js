@@ -4,28 +4,43 @@
  *
  * Sandbox utilities: taking a live canvas off the page and putting it back.
  *
- *  - serialize.js     : a session as a plain JSON tree, and back again
- *  - persistence.js   : named snapshots in localStorage, and a debounced auto-save
- *  - custom-types.js  : user-defined Pin presets in localStorage, global to the origin
- *  - slotted-type.js  : the display component a slotted custom type renders through
- *  - pages.js         : per-session page metadata (a name and Home flag per root Pin)
- *  - pin-ops.js       : whole-session operations (`clearSession`) the builder surfaces share
- *  - zip.js           : a dependency-free STORE-mode ZIP writer
- *  - export-static.js : a session as a standalone, serverless static site
+ *  - serialize.js      : a session as a v2 document of blit specs, and back (v1 migrated on load)
+ *  - format.js         : the v2 schema and the version door
+ *  - migrate-v1.js     : the one-time, pure v1 -> v2 migration
+ *  - write.js          : the writer
+ *  - restore-tree.js   : the self-contained loader an exported page embeds
+ *  - session-parts.js  : reactions, theme, and the parts a product attaches (its pages)
+ *  - reserved-keys.js  : the reserved-key rule the loader and the builder's gate share
+ *  - persistence.js    : named snapshots in localStorage, and a debounced auto-save
+ *  - pin-ops.js        : whole-session operations (`clearSession`) the builder surfaces share
+ *  - zip.js            : a dependency-free STORE-mode ZIP writer
+ *  - export-static.js  : a session as a standalone, serverless static site
  *
- * A barrel only. Every module here is importable on its own and none of them
- * import each other except downwards (`export-static` -> `serialize` + `zip`,
- * `persistence` -> `serialize`, `serialize` -> `pages`, `pin-ops` -> `pages`), so a
- * page that only wants a zip writer pays for a zip writer.
+ * A barrel only. Every module here is importable on its own and they import each
+ * other only downwards, so a page that only wants a zip writer pays for a zip
+ * writer. The builder's product modules (custom types, the slotted type, the page
+ * store) live in `.site`.
  */
 
 export {
   SANDBOX_FORMAT_VERSION,
+  SandboxFormatError,
   deserializeSession,
+  migrateV1,
   restoreTree,
   serializePin,
   serializeSession
 } from './serialize.js';
+
+export { PART_KEYS, attachSessionPart } from './session-parts.js';
+
+export {
+  PROTOTYPE_KEYS,
+  RESERVED_FIELD_KEYS,
+  RESERVED_KEY_PREFIX,
+  TYPE_NAME_KEY,
+  isReservedFieldKey
+} from './reserved-keys.js';
 
 export {
   AUTO_SAVE_DEBOUNCE_MS,
@@ -36,30 +51,6 @@ export {
   loadSandbox,
   saveSandbox
 } from './persistence.js';
-
-export {
-  CUSTOM_FIELD_KINDS,
-  CUSTOM_TYPE_KEY_PREFIX,
-  CUSTOM_TYPE_TRAITS,
-  DEFAULT_CUSTOM_CATEGORY,
-  PROTOTYPE_KEYS,
-  RESERVED_FIELD_KEYS,
-  RESERVED_KEY_PREFIX,
-  TYPE_NAME_KEY,
-  customTypeContents,
-  customTypeSlotContents,
-  deleteCustomType,
-  getCustomType,
-  isReservedFieldKey,
-  isSlottedType,
-  listCustomTypes,
-  normalizeCustomType,
-  saveCustomType
-} from './custom-types.js';
-
-export { SLOTTED_TYPE, registerSlottedType } from './slotted-type.js';
-
-export { PageStore, pagesFor } from './pages.js';
 
 export { clearSession } from './pin-ops.js';
 
