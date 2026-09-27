@@ -37,7 +37,7 @@ import {
 export const TASK_CARD_TYPE = 'task-card';
 
 /** Every class this widget emits. Styled by `COMPONENT_DEFAULT_CSS`. */
-export const TASK_CLS = Object.freeze({
+export const TASK_CLS = /* @__PURE__ */ Object.freeze({
   ROOT: 'cloudcanvas-task-card',
   HEADER: 'cloudcanvas-task-header',
   TITLE: 'cloudcanvas-task-title',
@@ -51,7 +51,7 @@ export const TASK_CLS = Object.freeze({
 });
 
 /** The priorities the sheet has a fill for; anything else is `normal`. */
-export const TASK_PRIORITIES = Object.freeze(['urgent', 'high', 'normal', 'low']);
+export const TASK_PRIORITIES = /* @__PURE__ */ Object.freeze(['urgent', 'high', 'normal', 'low']);
 
 const DEFAULT_PRIORITY = 'normal';
 const ALLOWED_KEYS = ['title', 'priority', 'items', 'assignee'];
@@ -203,7 +203,7 @@ function onAttach(pin) {
 /* ------------------ REGISTRATION ------------------ */
 
 /** Register the task card, once per registry; see `./registrar.js`. */
-export const registerTaskCard = makeRegistrar({
+export const registerTaskCard = /* @__PURE__ */ makeRegistrar({
   name: TASK_CARD_TYPE,
   build,
   update,

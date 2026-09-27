@@ -34,7 +34,7 @@
 
 import { HTML_KEY, createLogger } from '../../.plugin/index.js';
 
-const logger = createLogger('sandbox/custom-types');
+const logger = /* @__PURE__ */ createLogger('sandbox/custom-types');
 
 /** Namespace every custom type lives under. */
 export const CUSTOM_TYPE_KEY_PREFIX = 'cloudcanvas-custom-type:';
@@ -85,8 +85,8 @@ export const RESERVED_KEY_PREFIX = TYPE_NAME_KEY.slice(0, TYPE_NAME_KEY.indexOf(
  * definition can never carry a key the language gives a meaning to. The loader
  * (`restoreTree`) inlines the same three literals; a unit test holds them equal.
  */
-export const PROTOTYPE_KEYS = Object.freeze(['__proto__', 'constructor', 'prototype']);
-export const RESERVED_FIELD_KEYS = Object.freeze([HTML_KEY, ...PROTOTYPE_KEYS]);
+export const PROTOTYPE_KEYS = /* @__PURE__ */ Object.freeze(['__proto__', 'constructor', 'prototype']);
+export const RESERVED_FIELD_KEYS = /* @__PURE__ */ Object.freeze([HTML_KEY, ...PROTOTYPE_KEYS]);
 
 /**
  * Whether a field key is one the engine reserves, by either rule the loader and the
@@ -103,10 +103,10 @@ export function isReservedFieldKey(key) {
 }
 
 /** The value kinds a default field may declare. Small on purpose. */
-export const CUSTOM_FIELD_KINDS = Object.freeze(['text', 'number', 'checkbox']);
+export const CUSTOM_FIELD_KINDS = /* @__PURE__ */ Object.freeze(['text', 'number', 'checkbox']);
 
 /** The attachable traits a definition may name. */
-export const CUSTOM_TYPE_TRAITS = Object.freeze(['draggable', 'selectable', 'resizable', 'focussable']);
+export const CUSTOM_TYPE_TRAITS = /* @__PURE__ */ Object.freeze(['draggable', 'selectable', 'resizable', 'focussable']);
 
 /**
  * The insert-menu category a definition lands in when it names none.
@@ -119,10 +119,10 @@ export const CUSTOM_TYPE_TRAITS = Object.freeze(['draggable', 'selectable', 'res
 export const DEFAULT_CUSTOM_CATEGORY = 'Custom';
 
 /** The reload strategies a definition may name (mirrors `RELOAD_STRATEGIES`). */
-const RELOAD_VALUES = Object.freeze(['active', 'persistent', 'lazy']);
+const RELOAD_VALUES = /* @__PURE__ */ Object.freeze(['active', 'persistent', 'lazy']);
 
 /** Traits a Pin is born with when a definition says nothing. */
-const DEFAULT_TRAITS = Object.freeze(['draggable', 'selectable', 'resizable']);
+const DEFAULT_TRAITS = /* @__PURE__ */ Object.freeze(['draggable', 'selectable', 'resizable']);
 
 /** The backing store, or null wherever there is not one. */
 function storage() {

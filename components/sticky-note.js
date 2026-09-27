@@ -45,10 +45,10 @@ import { asText } from '../coerce.js';
 export const STICKY_NOTE_TYPE = 'sticky-note';
 
 /** The paper colours, in swatch order. A closed set: the value reaches an attribute. */
-export const STICKY_THEMES = Object.freeze(['yellow', 'pink', 'cyan', 'lime', 'orange']);
+export const STICKY_THEMES = /* @__PURE__ */ Object.freeze(['yellow', 'pink', 'cyan', 'lime', 'orange']);
 
 /** Every class this widget emits. Styled by `COMPONENT_DEFAULT_CSS`. */
-export const STICKY_CLS = Object.freeze({
+export const STICKY_CLS = /* @__PURE__ */ Object.freeze({
   ROOT: 'cloudcanvas-sticky-note',
   PINHEAD: 'cloudcanvas-sticky-pinhead',
   HEADER: 'cloudcanvas-sticky-header',
@@ -211,7 +211,7 @@ function onAttach(pin) {
 /* ------------------ REGISTRATION ------------------ */
 
 /** Register the sticky note, once per registry; see `./registrar.js`. */
-export const registerStickyNote = makeRegistrar({
+export const registerStickyNote = /* @__PURE__ */ makeRegistrar({
   name: STICKY_NOTE_TYPE,
   build,
   update,

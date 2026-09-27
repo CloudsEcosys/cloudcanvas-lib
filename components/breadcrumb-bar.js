@@ -29,7 +29,7 @@ import {
 export const BREADCRUMB_BAR_TYPE = 'breadcrumb-bar';
 
 /** Every class this widget emits. Styled by `COMPONENT_DEFAULT_CSS`. */
-export const BREADCRUMB_CLS = Object.freeze({
+export const BREADCRUMB_CLS = /* @__PURE__ */ Object.freeze({
   ROOT: 'cloudcanvas-breadcrumb-card',
   BACK: 'cloudcanvas-breadcrumb-back-btn',
   PATH: 'cloudcanvas-breadcrumb-path',
@@ -105,7 +105,7 @@ function update(pin, contents, bindings) {
 /* ------------------ REGISTRATION ------------------ */
 
 /** Register the breadcrumb bar, once per registry; see `./registrar.js`. */
-export const registerBreadcrumbBar = makeRegistrar({
+export const registerBreadcrumbBar = /* @__PURE__ */ makeRegistrar({
   name: BREADCRUMB_BAR_TYPE,
   build,
   update,

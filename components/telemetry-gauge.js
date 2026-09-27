@@ -35,7 +35,7 @@ import { toNumber } from '../coerce.js';
 export const TELEMETRY_GAUGE_TYPE = 'telemetry-gauge';
 
 /** Every class this widget emits. Styled by `COMPONENT_DEFAULT_CSS`. */
-export const TELEMETRY_CLS = Object.freeze({
+export const TELEMETRY_CLS = /* @__PURE__ */ Object.freeze({
   ROOT: 'cloudcanvas-telemetry-card',
   HEADER: 'cloudcanvas-telemetry-header',
   TITLE: 'cloudcanvas-telemetry-title',
@@ -47,7 +47,7 @@ export const TELEMETRY_CLS = Object.freeze({
 });
 
 /** The statuses the sheet has a fill for, in rising order. */
-export const TELEMETRY_STATUSES = Object.freeze(['nominal', 'warning', 'critical']);
+export const TELEMETRY_STATUSES = /* @__PURE__ */ Object.freeze(['nominal', 'warning', 'critical']);
 
 const DEFAULT_WARN = 70;
 const DEFAULT_CRIT = 90;
@@ -175,7 +175,7 @@ function onAttach(pin) {
 /* ------------------ REGISTRATION ------------------ */
 
 /** Register the gauge, once per registry; see `./registrar.js`. */
-export const registerTelemetryGauge = makeRegistrar({
+export const registerTelemetryGauge = /* @__PURE__ */ makeRegistrar({
   name: TELEMETRY_GAUGE_TYPE,
   build,
   update,

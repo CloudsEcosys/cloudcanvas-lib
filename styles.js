@@ -51,7 +51,7 @@ export const LIB_STYLE_ID = 'cloudcanvas-lib-styles';
  * a focused field borrows the accent by definition, and stating it as its own
  * knob lets a consumer break that link without redefining the accent.
  */
-export const LIB_LIGHT_THEME = Object.freeze({
+export const LIB_LIGHT_THEME = /* @__PURE__ */ Object.freeze({
   '--cc-tone-info': '#0284c7',
   '--cc-tone-success': '#16a34a',
   '--cc-tone-warning': '#ca8a04',

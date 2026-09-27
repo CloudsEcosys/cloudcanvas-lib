@@ -44,7 +44,7 @@ export const CHAT_MESSAGE_TYPE = 'chat-message';
 export const CHAT_INPUT_TYPE = 'chat-input';
 
 /** Every class these widgets emit. Styled by `COMPONENT_DEFAULT_CSS`. */
-export const CHAT_CLS = Object.freeze({
+export const CHAT_CLS = /* @__PURE__ */ Object.freeze({
   ROOT: 'cloudcanvas-chat-message-card',
   AVATAR: 'cloudcanvas-chat-avatar',
   CONTENT: 'cloudcanvas-chat-content',
@@ -275,7 +275,7 @@ function updateInput(pin, contents, bindings, cache) {
 /* ------------------ REGISTRATION ------------------ */
 
 /** Register the chat message, once per registry; see `./registrar.js`. */
-export const registerChatMessage = makeRegistrar({
+export const registerChatMessage = /* @__PURE__ */ makeRegistrar({
   name: CHAT_MESSAGE_TYPE,
   build: buildMessage,
   update: updateMessage,
@@ -284,7 +284,7 @@ export const registerChatMessage = makeRegistrar({
 });
 
 /** Register the composer, once per registry; see `./registrar.js`. */
-export const registerChatInput = makeRegistrar({
+export const registerChatInput = /* @__PURE__ */ makeRegistrar({
   name: CHAT_INPUT_TYPE,
   build: buildInput,
   update: updateInput,

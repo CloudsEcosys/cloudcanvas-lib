@@ -38,7 +38,7 @@ import { injectLibStyles } from './styles.js';
 export const LIST_TYPE = 'lib-list';
 
 /** Every class this widget emits. Styled by `LIB_DEFAULT_CSS`. */
-export const LIST_CLS = Object.freeze({
+export const LIST_CLS = /* @__PURE__ */ Object.freeze({
   ROOT: 'cloudcanvas-lib-list',
   ITEM: 'cloudcanvas-lib-list-item',
   ITEM_LABEL: 'cloudcanvas-lib-list-item-label',

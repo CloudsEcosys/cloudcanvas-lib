@@ -45,7 +45,7 @@ export const COMPONENT_DEFAULT_CSS = `${COMPONENTS_CARDS_CSS}${COMPONENTS_BOARD_
  * The sticky-note tokens are absent on purpose: paper and its ink are the same
  * colour on either board, so their fallbacks are their only values.
  */
-export const COMPONENTS_LIGHT_THEME = Object.freeze({
+export const COMPONENTS_LIGHT_THEME = /* @__PURE__ */ Object.freeze({
   '--cc-priority-urgent': '#be123c',
   '--cc-priority-high': '#9a3412',
   '--cc-priority-normal': '#0369a1',

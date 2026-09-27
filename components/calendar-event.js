@@ -35,7 +35,7 @@ import { asText } from '../coerce.js';
 export const CALENDAR_EVENT_TYPE = 'calendar-event';
 
 /** Every class this widget emits. Styled by `COMPONENT_DEFAULT_CSS`. */
-export const EVENT_CLS = Object.freeze({
+export const EVENT_CLS = /* @__PURE__ */ Object.freeze({
   ROOT: 'cloudcanvas-event-card',
   HEADER: 'cloudcanvas-event-header',
   TITLE: 'cloudcanvas-event-title',
@@ -48,7 +48,7 @@ export const EVENT_CLS = Object.freeze({
 });
 
 /** The severities the sheet has a colour for, most urgent first. */
-export const EVENT_SEVERITIES = Object.freeze(['critical', 'high', 'normal', 'info']);
+export const EVENT_SEVERITIES = /* @__PURE__ */ Object.freeze(['critical', 'high', 'normal', 'info']);
 
 /** The events the actions transmit, bubbling up the scope chain. */
 export const ACKNOWLEDGED_EVENT = 'alert:acknowledged';
@@ -141,7 +141,7 @@ function update(pin, contents, bindings, cache) {
 /* ------------------ REGISTRATION ------------------ */
 
 /** Register the calendar event, once per registry; see `./registrar.js`. */
-export const registerCalendarEvent = makeRegistrar({
+export const registerCalendarEvent = /* @__PURE__ */ makeRegistrar({
   name: CALENDAR_EVENT_TYPE,
   build,
   update,

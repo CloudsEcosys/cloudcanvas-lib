@@ -56,7 +56,7 @@ const ROOT_CLASS = 'cloudcanvas-lib-badge';
 const DISMISS_CLASS = 'cloudcanvas-lib-badge-dismiss';
 
 /** Reference hues for the `--cc-tone-*` tokens. */
-const TONE_HUES = Object.freeze({
+const TONE_HUES = /* @__PURE__ */ Object.freeze({
   info: '#38bdf8',
   success: '#4ade80',
   warning: '#fbbf24',

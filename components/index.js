@@ -154,7 +154,7 @@ import { EditableTrait } from './traits/editable.js';
 import { SnapToGridTrait } from './traits/snap-to-grid.js';
 
 /** Every component registrar, in the order the barrel exports them. */
-const REGISTRARS = Object.freeze([
+const REGISTRARS = /* @__PURE__ */ Object.freeze([
   registerStickyNote,
   registerTaskCard,
   registerTelemetryGauge,
@@ -168,7 +168,7 @@ const REGISTRARS = Object.freeze([
 ]);
 
 /** The two behaviour traits, registered by constructor with their defaults. */
-const BEHAVIOUR_TRAITS = Object.freeze([
+const BEHAVIOUR_TRAITS = /* @__PURE__ */ Object.freeze([
   ['editable', EditableTrait, { targetKey: 'title' }],
   ['snap-to-grid', SnapToGridTrait, { gridSize: 24 }]
 ]);

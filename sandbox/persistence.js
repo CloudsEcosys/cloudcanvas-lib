@@ -35,7 +35,7 @@
 import { createLogger } from '../../.plugin/index.js';
 import { deserializeSession, serializeSession } from './serialize.js';
 
-const logger = createLogger('sandbox/persistence');
+const logger = /* @__PURE__ */ createLogger('sandbox/persistence');
 
 /** Namespace every sandbox key lives under. */
 export const SANDBOX_KEY_PREFIX = 'cloudcanvas-sandbox:';

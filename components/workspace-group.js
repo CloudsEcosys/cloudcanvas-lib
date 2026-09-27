@@ -31,7 +31,7 @@ import {
 export const WORKSPACE_GROUP_TYPE = 'workspace-group';
 
 /** Every class this widget emits. Styled by `COMPONENT_DEFAULT_CSS`. */
-export const WORKSPACE_CLS = Object.freeze({
+export const WORKSPACE_CLS = /* @__PURE__ */ Object.freeze({
   ROOT: 'cloudcanvas-workspace-card',
   HEADER: 'cloudcanvas-workspace-header',
   TITLE: 'cloudcanvas-workspace-title',
@@ -95,7 +95,7 @@ function update(pin, contents, bindings) {
 /* ------------------ REGISTRATION ------------------ */
 
 /** Register the workspace group, once per registry; see `./registrar.js`. */
-export const registerWorkspaceGroup = makeRegistrar({
+export const registerWorkspaceGroup = /* @__PURE__ */ makeRegistrar({
   name: WORKSPACE_GROUP_TYPE,
   build,
   update,

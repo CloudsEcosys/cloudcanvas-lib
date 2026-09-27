@@ -58,7 +58,7 @@ const DOS_EPOCH_YEAR = 1980;
 const MAX_UINT32 = 0xffffffff;
 const MAX_UINT16 = 0xffff;
 
-const encoder = new TextEncoder();
+const encoder = /* @__PURE__ */ new TextEncoder();
 
 /* ------------------ CRC-32 ------------------ */
 
@@ -83,7 +83,7 @@ function buildCrcTable() {
   return table;
 }
 
-const CRC_TABLE = buildCrcTable();
+const CRC_TABLE = /* @__PURE__ */ buildCrcTable();
 
 /**
  * CRC-32 of a byte sequence.

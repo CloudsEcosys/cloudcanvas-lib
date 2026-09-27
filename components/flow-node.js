@@ -32,7 +32,7 @@ import {
 export const FLOW_NODE_TYPE = 'flow-node';
 
 /** Every class this widget emits. Styled by `COMPONENT_DEFAULT_CSS`. */
-export const FLOW_CLS = Object.freeze({
+export const FLOW_CLS = /* @__PURE__ */ Object.freeze({
   ROOT: 'cloudcanvas-flow-node',
   PULSING: 'is-pulsing',
   PORT: 'cloudcanvas-flow-port',
@@ -142,7 +142,7 @@ function update(pin, contents, bindings) {
 /* ------------------ REGISTRATION ------------------ */
 
 /** Register the flow node, once per registry; see `./registrar.js`. */
-export const registerFlowNode = makeRegistrar({
+export const registerFlowNode = /* @__PURE__ */ makeRegistrar({
   name: FLOW_NODE_TYPE,
   build,
   update,

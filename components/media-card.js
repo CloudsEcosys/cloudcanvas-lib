@@ -35,7 +35,7 @@ import { asText } from '../coerce.js';
 export const MEDIA_CARD_TYPE = 'media-card';
 
 /** Every class this widget emits. Styled by `COMPONENT_DEFAULT_CSS`. */
-export const MEDIA_CLS = Object.freeze({
+export const MEDIA_CLS = /* @__PURE__ */ Object.freeze({
   ROOT: 'cloudcanvas-media-card',
   VIEWPORT: 'cloudcanvas-media-viewport',
   IMAGE: 'cloudcanvas-media-img',
@@ -112,7 +112,7 @@ function update(pin, contents, bindings, cache) {
 /* ------------------ REGISTRATION ------------------ */
 
 /** Register the media card, once per registry; see `./registrar.js`. */
-export const registerMediaCard = makeRegistrar({
+export const registerMediaCard = /* @__PURE__ */ makeRegistrar({
   name: MEDIA_CARD_TYPE,
   build,
   update,

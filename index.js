@@ -72,7 +72,7 @@ import { registerAlert } from './alert.js';
 import { registerList } from './list.js';
 
 /** Every registrar in the kit, in the order the barrel exports them. */
-const REGISTRARS = Object.freeze([
+const REGISTRARS = /* @__PURE__ */ Object.freeze([
   registerButton,
   registerInput,
   registerCheckbox,
