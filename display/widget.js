@@ -27,6 +27,7 @@
  * removing the widget - a listener stops with `preventDefault()`.
  */
 import { blit, type } from '../../.plugin/core/index.js';
+import { deferRender } from '../../.plugin/addons/edit.js';
 import { PinEvent, defineComponent } from '../../.plugin/index.js';
 import { injectLibStyles } from '../styles.js';
 
@@ -72,7 +73,7 @@ function contentsOf(name, keys, options) {
   return new Map(Object.entries(options));
 }
 
-/** The widget as a core trait: bind the blit's clone, render its options, and stop listening on cleanup. */
+/** The widget as a core trait: bind the blit's clone, render its options (deferred while edited), stop listening on cleanup. */
 function coreTrait({ name, bind, render }, keys) {
   return (b, options) => {
     const contents = contentsOf(name, keys, options);
@@ -82,7 +83,10 @@ function coreTrait({ name, bind, render }, keys) {
       target.addEventListener(eventType, listener);
       offs.push(() => target.removeEventListener(eventType, listener));
     };
-    render(bind(b.el, on, () => dismissBlit(b)), contents, {});
+    const bindings = bind(b.el, on, () => dismissBlit(b));
+    // An open edit (`cloudcanvas/edit`) defers the render; `end` replays the last one, once.
+    const paint = () => render(bindings, contents, {});
+    if (!deferRender(b, paint)) paint();
     return () => { for (const off of offs) off(); };
   };
 }
