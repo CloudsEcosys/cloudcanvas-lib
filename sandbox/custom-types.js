@@ -21,6 +21,12 @@
  *     as a profile that cannot be opened. One prefix per concern keeps both
  *     enumerable sets honest.
  *
+ * Type mapping (the one type mechanism is the core `type()`): a flat custom type
+ * places the `card` display type (`.plugin/addons/types.js`) with
+ * `customTypeContents` as its defaults; a slotted one places the per-shape
+ * `type('cc-slotted:<shape>')` of `./slotted-type.js`, whose slots are text-only.
+ * This module stays the recipe store and the reserved-key gate below.
+ *
  * The storage guard and the key enumeration follow `./persistence.js` exactly:
  * `typeof localStorage === 'undefined'` returns rather than throws, and the set
  * is walked with `key(i)`, the only enumeration the spec defines.

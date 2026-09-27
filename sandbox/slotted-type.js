@@ -23,6 +23,12 @@
  *
  * Text travels through `Text.data` (`setText`), which the DOM escapes, so a slot
  * value is prose and never markup - the same XSS story the built-in card tells.
+ *
+ * A shim over the core type: each distinct region/field *shape* is one
+ * `type('cc-slotted:<shape>', {template})`, built with DOM calls (names are data,
+ * so they never pass through markup) and holding one text-only `[data-slot]` per
+ * field line, `"<region>.<field>"`. `build` clones that type; `update` writes text.
+ * The shape key is the only structure, so equal shapes share one template.
  */
 
 import {
@@ -32,6 +38,8 @@ import {
   setText,
   setVisible
 } from '../../.plugin/index.js';
+import { type } from '../../.plugin/core/index.js';
+import { mountType } from '../../.plugin/addons/types.js';
 import { TYPE_NAME_KEY } from './custom-types.js';
 
 /** Registry name, and the `type` a slotted instance is created by. */
@@ -71,34 +79,52 @@ function fieldText(field) {
   return String(value);
 }
 
+/** The structure a slots value describes: each region's name and its field keys, strings only. */
+function shapeOf(slots) {
+  const text = (value) => (typeof value === 'string' ? value : '');
+  return slots.map((slot) => ({
+    name: text(slot?.name),
+    keys: (Array.isArray(slot?.fields) ? slot.fields : []).map((field) => text(field?.key))
+  }));
+}
+
 /**
- * Build one region per slot, and one text line per field inside it.
- *
- * The `data-slot-name` attribute is the region's public handle: the stylesheet
- * emphasises the first (header) region through it, and a test reads it to prove
- * the regions are genuinely separate elements rather than one run of text.
+ * The core type for one shape, defined on first use. The `data-slot-name` and
+ * `data-slot-field-key` attributes are the regions' public handles (the
+ * stylesheet emphasises the header region through them; tests read them).
  */
-function build(pin, contentEl) {
+function shapeType(shape) {
+  const name = `${SLOTTED_TYPE}:${JSON.stringify(shape)}`;
+  const known = type(name);
+  if (known) return known.el;
+
+  const template = document.createElement('template');
   const stack = makeElement('div', STACK_CLASS);
-  const regions = [];
-
-  for (const slot of slotsOf(pin.contents)) {
+  shape.forEach((slot, slotIndex) => {
     const region = makeElement('section', SLOT_CLASS);
-    region.dataset.slotName = slot && typeof slot.name === 'string' ? slot.name : '';
-
-    const lines = [];
-    for (const field of (slot && Array.isArray(slot.fields) ? slot.fields : [])) {
+    region.dataset.slotName = slot.name;
+    slot.keys.forEach((key, fieldIndex) => {
       const line = makeElement('div', FIELD_CLASS);
-      line.dataset.slotFieldKey = field && typeof field.key === 'string' ? field.key : '';
-      lines.push({ element: line, node: makeTextNode(line) });
+      line.dataset.slotFieldKey = key;
+      line.dataset.slot = `${slotIndex}.${fieldIndex}`;
       region.appendChild(line);
-    }
-
+    });
     stack.appendChild(region);
-    regions.push({ lines });
-  }
+  });
+  template.content.appendChild(stack);
+  return type(name, { template }).el;
+}
 
-  contentEl.replaceChildren(stack);
+/** Clone the shape's type into the content element; bind a text node in every field line. */
+function build(pin, contentEl) {
+  const shape = shapeOf(slotsOf(pin.contents));
+  const lines = mountType(shapeType(shape), contentEl);
+  const regions = shape.map((slot, slotIndex) => ({
+    lines: slot.keys.map((key, fieldIndex) => {
+      const element = lines[`${slotIndex}.${fieldIndex}`];
+      return { element, node: makeTextNode(element) };
+    })
+  }));
   return { regions };
 }
 
