@@ -4,34 +4,26 @@
  *
  * TelemetryGauge: a live metric with a status chip and a bar.
  *
- * The reading is the Pin's primary vector and its rate of change is the
- * second, so the number a consumer reads off the particle is the number on
- * the card. The thresholds are contents (`warn`, `crit`): they describe the
- * gauge, they survive a snapshot, and `update` reads them from the same Map
- * as everything else.
+ *   registerTelemetryGauge();
+ *   const gauge = createTelemetry(app, { title: 'CPU', value: 45, warn: 75, crit: 90 });
+ *   setTelemetryReading(gauge, 95);           // telemetry:alert, once per crossing
+ *
+ * The reading is the `value` content key and its last change is `delta`, so
+ * the number a consumer reads off the blit is the number on the card. The
+ * thresholds are contents too (`warn`, `crit`): they describe the gauge and
+ * survive a snapshot.
  *
  * The bar is a native `<progress>`, tinted by `data-status` through the sheet
  * rather than by an inline background. The reading is fed by the caller through
  * `setTelemetryReading`; the gallery's random walk is the site's own
  * (`.site/telemetry-simulation.js`).
  */
-
-import {
-  PinEvent,
-  makeElement,
-  makeTextNode,
-  setAttr,
-  setText
-} from '../../.plugin/index.js';
-import {
-  claimHost,
-  createComponentPin,
-  makeRegistrar,
-  splitOptions
-} from './registrar.js';
+import { contentOf, leadingText, setAttr, setContents, setText, widget, widgetSpec } from '../../.plugin/addons/widget.js';
 import { toNumber } from '../coerce.js';
+import { withDefaults } from './registrar.js';
+import { injectComponentStyles } from './styles.js';
 
-/** Registry name, and the `type` a caller creates a Pin by. */
+/** The type name. */
 export const TELEMETRY_GAUGE_TYPE = 'telemetry-gauge';
 
 /** Every class this widget emits. Styled by `COMPONENT_DEFAULT_CSS`. */
@@ -49,17 +41,12 @@ export const TELEMETRY_CLS = /* @__PURE__ */ Object.freeze({
 /** The statuses the sheet has a fill for, in rising order. */
 export const TELEMETRY_STATUSES = /* @__PURE__ */ Object.freeze(['nominal', 'warning', 'critical']);
 
+/** The event a reading entering the critical band emits. */
+export const TELEMETRY_ALERT_EVENT = 'telemetry:alert';
+
 const DEFAULT_WARN = 70;
 const DEFAULT_CRIT = 90;
-const ALLOWED_KEYS = ['title', 'unit', 'description', 'warn', 'crit'];
-
-/** The thresholds a gauge is currently reading against. */
-function thresholdsOf(pin) {
-  return {
-    warn: toNumber(pin.contents.get('warn'), DEFAULT_WARN),
-    crit: toNumber(pin.contents.get('crit'), DEFAULT_CRIT)
-  };
-}
+const DEFAULT_VALUE = 42;
 
 /** The status a reading falls in. */
 export function telemetryStatusOf(value, warn = DEFAULT_WARN, crit = DEFAULT_CRIT) {
@@ -71,109 +58,77 @@ export function telemetryStatusOf(value, warn = DEFAULT_WARN, crit = DEFAULT_CRI
 /* ------------------ BEHAVIOUR ------------------ */
 
 /**
- * Write a reading into the vectors and announce a critical breach, once per
- * crossing: an alert fires when the reading enters the critical band, not on
- * every frame it stays there.
+ * Write a reading and its change, and emit `telemetry:alert` once per crossing:
+ * when the reading enters the critical band, not on every write it stays there.
+ * @returns {number} the reading written
  */
-export function setTelemetryReading(pin, nextValue) {
+export function setTelemetryReading(b, nextValue) {
+  const contents = contentOf(b);
   const next = toNumber(nextValue, 0);
-  const prev = toNumber(pin.particle.getPrimaryVector(), 0);
-  const { crit } = thresholdsOf(pin);
-
-  pin.setVectors([next, next - prev]);
-
+  const prev = toNumber(contents.value, 0);
+  const crit = toNumber(contents.crit, DEFAULT_CRIT);
+  setContents(b, { value: next, delta: next - prev });
   if (next >= crit && prev < crit) {
-    pin.transmit(new PinEvent('telemetry:alert', {
-      payload: { value: next, threshold: crit, status: 'critical' },
-      bubbles: true,
-      source: pin
-    }));
+    b.emit(TELEMETRY_ALERT_EVENT, { value: next, threshold: crit, status: 'critical' });
   }
   return next;
 }
 
 /* ------------------ TEMPLATE ------------------ */
 
-function build(pin, contentEl) {
-  claimHost(contentEl);
-  const card = makeElement('div', `cloudcanvas-component cloudcanvas-component-card ${TELEMETRY_CLS.ROOT}`);
+const HTML = `<div class="cloudcanvas-component cloudcanvas-component-card ${TELEMETRY_CLS.ROOT}">`
+  + `<div class="${TELEMETRY_CLS.HEADER}"><div class="${TELEMETRY_CLS.TITLE}"></div>`
+  + `<span class="cloudcanvas-component-chip ${TELEMETRY_CLS.STATUS}"></span></div>`
+  + `<div class="${TELEMETRY_CLS.READOUT}"><span class="${TELEMETRY_CLS.VALUE}"></span>`
+  + `<span class="${TELEMETRY_CLS.UNIT}"></span></div>`
+  + `<progress class="cloudcanvas-component-meter ${TELEMETRY_CLS.BAR}" max="100"></progress></div>`;
 
-  const header = makeElement('div', TELEMETRY_CLS.HEADER);
-  const title = makeElement('div', TELEMETRY_CLS.TITLE);
-  const titleText = makeTextNode(title);
-  const status = makeElement('span', `cloudcanvas-component-chip ${TELEMETRY_CLS.STATUS}`);
-  const statusText = makeTextNode(status);
-  header.append(title, status);
-
-  const readout = makeElement('div', TELEMETRY_CLS.READOUT);
-  const value = makeElement('span', TELEMETRY_CLS.VALUE);
-  const valueText = makeTextNode(value);
-  const unit = makeElement('span', TELEMETRY_CLS.UNIT);
-  const unitText = makeTextNode(unit);
-  readout.append(value, unit);
-
-  const bar = makeElement('progress', `cloudcanvas-component-meter ${TELEMETRY_CLS.BAR}`);
-  bar.setAttribute('max', '100');
-
-  card.append(header, readout, bar);
-  contentEl.replaceChildren(card);
-
-  return { card, titleText, status, statusText, valueText, unitText, bar };
+function bind(host) {
+  const find = (className) => host.querySelector(`.${className}`);
+  const status = find(TELEMETRY_CLS.STATUS);
+  return {
+    titleText: leadingText(find(TELEMETRY_CLS.TITLE)), status, statusText: leadingText(status),
+    valueText: leadingText(find(TELEMETRY_CLS.VALUE)), unitText: leadingText(find(TELEMETRY_CLS.UNIT)),
+    bar: find(TELEMETRY_CLS.BAR)
+  };
 }
 
-function update(pin, contents, bindings, cache) {
-  const reading = toNumber(pin.particle.getPrimaryVector(), 0);
-  const warn = toNumber(contents.get('warn'), DEFAULT_WARN);
-  const crit = toNumber(contents.get('crit'), DEFAULT_CRIT);
-  const status = telemetryStatusOf(reading, warn, crit);
+function render(bindings, contents, cache) {
+  const reading = toNumber(contents.get('value'), 0);
+  const status = telemetryStatusOf(reading, toNumber(contents.get('warn'), DEFAULT_WARN), toNumber(contents.get('crit'), DEFAULT_CRIT));
   const title = contents.get('title');
-
   setText(bindings.titleText, title);
   setText(bindings.unitText, contents.get('unit'));
   setText(bindings.valueText, String(Math.round(reading)));
   setText(bindings.statusText, status);
-
   setAttr(bindings.status, 'data-status', status, cache, 'status');
   setAttr(bindings.bar, 'data-status', status, cache, 'barStatus');
   setAttr(bindings.bar, 'value', String(Math.min(100, Math.max(0, reading))), cache, 'value');
   setAttr(bindings.bar, 'aria-label', title === undefined || title === null ? '' : String(title), cache, 'label');
 }
 
-/** Seed the `[value, delta]` pair for a gauge created without vectors. */
-function onAttach(pin) {
-  if (pin.particle.getVectors().length === 0) pin.setVectors([50, 0]);
-}
-
 /* ------------------ REGISTRATION ------------------ */
 
-/** Register the gauge, once per registry; see `./registrar.js`. */
-export const registerTelemetryGauge = /* @__PURE__ */ makeRegistrar({
-  name: TELEMETRY_GAUGE_TYPE,
-  build,
-  update,
-  chrome: false,
-  allowedKeys: ALLOWED_KEYS,
-  defaults: { onAttach }
+const SPEC = Object.freeze({
+  name: TELEMETRY_GAUGE_TYPE, html: HTML,
+  keys: ['title', 'unit', 'description', 'warn', 'crit', 'value', 'delta'], bind, render
 });
 
-/**
- * Create a telemetry gauge Pin.
- *
- * @param {CloudCanvasSession} session
- * @param {object} [options] `title`, `unit`, `description`, `warn`, `crit`
- *   become contents; `value` seeds the reading; the rest are Pin options
- * @returns {Pin}
- */
-export function createTelemetryPin(session, options = {}) {
-  const { pinOptions, contents } = splitOptions(options, [
-    ['title', 'Live CPU Metric'],
-    ['unit', '%'],
-    ['description', 'Simulated streaming telemetry'],
-    ['warn', DEFAULT_WARN],
-    ['crit', DEFAULT_CRIT]
-  ], { x: 100, y: 100, width: 210, height: 140 });
+/** Define the telemetry gauge widget, once. @returns {object} its type */
+export function registerTelemetryGauge() {
+  injectComponentStyles();
+  return widget(SPEC);
+}
 
-  const { value, ...rest } = pinOptions;
-  rest.vectors = [toNumber(value, 42), 0];
-  return createComponentPin(session, registerTelemetryGauge, rest, contents, false);
+/**
+ * A telemetry gauge in `parent`. `title`, `unit`, `description`, `warn`, `crit`, `value`
+ * (the reading) and `delta` (its last change) are contents; the rest is spec.
+ */
+export function createTelemetry(parent, options = {}) {
+  registerTelemetryGauge();
+  return parent.blit(widgetSpec(TELEMETRY_GAUGE_TYPE, withDefaults({
+    x: 100, y: 100, w: 210, h: 140, chrome: false,
+    title: 'Live CPU Metric', unit: '%', description: 'Simulated streaming telemetry',
+    warn: DEFAULT_WARN, crit: DEFAULT_CRIT, delta: 0
+  }, { ...options, value: toNumber(options.value, DEFAULT_VALUE) })));
 }

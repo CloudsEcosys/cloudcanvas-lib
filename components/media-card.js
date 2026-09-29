@@ -2,36 +2,29 @@
  * CloudCanvas - NeoTec, LLC, Richard Christopher
  * Written by Richard Christopher, Copyright 2026 NeoTec, LLC
  *
- * MediaCard: an image with a title and caption, focussable for inspection.
+ * MediaCard: an image with a title and caption, a zoom target for inspection.
  *
- * The `src` goes through `primitives.safeUrl` before it reaches the
- * attribute - the same reasoning as `lib/avatar.js`, and the same fallback:
- * a URL that does not survive the check is *no* image, and the placeholder
- * shows instead. The placeholder is inline SVG painted in `currentColor`, so
- * it takes the theme's muted text colour rather than carrying a hex of its
- * own, and it is built once beside the `<img>` with visibility picking one.
- * `src` is written only while an image is showing, and only when it moved:
- * an `<img>` re-fetches on every assignment.
+ *   registerMediaCard();
+ *   createMediaCard(app, { title: 'Topology', caption: 'Overview', src: 'https://example.com/a.png' });
+ *
+ * The `src` goes through `safeUrl` before it reaches the attribute, and a URL
+ * that does not survive the check is *no* image: the placeholder shows
+ * instead. The placeholder is inline SVG painted in `currentColor`, so it takes
+ * the theme's muted text colour rather than carrying a hex of its own; it sits
+ * in the template beside the `<img>` and the `hidden` attribute picks one (an
+ * SVG element has no `hidden` property, so the attribute is written directly).
+ * `src` is written only while an image is showing, and only when it moved: an
+ * `<img>` re-fetches on every assignment. The `focus` spec key frames it.
  */
-
-import {
-  FocussableTrait,
-  makeElement,
-  makeTextNode,
-  primitives,
-  setAttr,
-  setText,
-  setVisible
-} from '../../.plugin/index.js';
-import {
-  claimHost,
-  createComponentPin,
-  makeRegistrar,
-  splitOptions
-} from './registrar.js';
+import { blit } from '../../.plugin/core/index.js';
+import { focus } from '../../.plugin/addons/focus.js';
+import { leadingText, setAttr, setText, setVisible, widget, widgetSpec } from '../../.plugin/addons/widget.js';
+import { safeUrl } from '../../.plugin/graphics/primitives/primitives.js';
 import { asText } from '../coerce.js';
+import { withDefaults } from './registrar.js';
+import { injectComponentStyles } from './styles.js';
 
-/** Registry name, and the `type` a caller creates a Pin by. */
+/** The type name. */
 export const MEDIA_CARD_TYPE = 'media-card';
 
 /** Every class this widget emits. Styled by `COMPONENT_DEFAULT_CSS`. */
@@ -45,100 +38,61 @@ export const MEDIA_CLS = /* @__PURE__ */ Object.freeze({
   CAPTION: 'cloudcanvas-media-caption'
 });
 
-const SVG_NS = 'http://www.w3.org/2000/svg';
-const ALLOWED_KEYS = ['title', 'caption', 'src'];
-
-/** The stand-in diagram: a horizon, a sun, nothing that needs a colour of its own. */
-function makePlaceholder() {
-  const svg = document.createElementNS(SVG_NS, 'svg');
-  svg.setAttribute('class', MEDIA_CLS.PLACEHOLDER);
-  svg.setAttribute('viewBox', '0 0 300 180');
-  svg.setAttribute('aria-hidden', 'true');
-
-  const shapes = [
-    ['rect', { width: '100%', height: '100%', opacity: '0.08' }],
-    ['path', { d: 'M50 140 L110 80 L160 120 L210 60 L270 140 Z', opacity: '0.45' }],
-    ['circle', { cx: '80', cy: '50', r: '18', opacity: '0.7' }]
-  ];
-  for (const [tag, attributes] of shapes) {
-    const shape = document.createElementNS(SVG_NS, tag);
-    shape.setAttribute('fill', 'currentColor');
-    for (const [name, value] of Object.entries(attributes)) shape.setAttribute(name, value);
-    svg.appendChild(shape);
-  }
-  return svg;
-}
-
 /* ------------------ TEMPLATE ------------------ */
 
-function build(pin, contentEl) {
-  claimHost(contentEl);
-  const card = makeElement('div', `cloudcanvas-component cloudcanvas-component-card ${MEDIA_CLS.ROOT}`);
+/** The stand-in diagram: a horizon, a sun, nothing that needs a colour of its own. */
+const PLACEHOLDER = `<svg class="${MEDIA_CLS.PLACEHOLDER}" viewBox="0 0 300 180" aria-hidden="true">`
+  + '<rect fill="currentColor" width="100%" height="100%" opacity="0.08"></rect>'
+  + '<path fill="currentColor" d="M50 140 L110 80 L160 120 L210 60 L270 140 Z" opacity="0.45"></path>'
+  + '<circle fill="currentColor" cx="80" cy="50" r="18" opacity="0.7"></circle></svg>';
 
-  const viewport = makeElement('div', MEDIA_CLS.VIEWPORT);
-  const image = makeElement('img', MEDIA_CLS.IMAGE);
-  const placeholder = makePlaceholder();
-  viewport.append(image, placeholder);
+const HTML = `<div class="cloudcanvas-component cloudcanvas-component-card ${MEDIA_CLS.ROOT}">`
+  + `<div class="${MEDIA_CLS.VIEWPORT}"><img class="${MEDIA_CLS.IMAGE}" hidden>${PLACEHOLDER}</div>`
+  + `<div class="${MEDIA_CLS.CONTENT}"><div class="${MEDIA_CLS.TITLE}"></div>`
+  + `<div class="${MEDIA_CLS.CAPTION}"></div></div></div>`;
 
-  const content = makeElement('div', MEDIA_CLS.CONTENT);
-  const title = makeElement('div', MEDIA_CLS.TITLE);
-  const titleText = makeTextNode(title);
-  const caption = makeElement('div', MEDIA_CLS.CAPTION);
-  const captionText = makeTextNode(caption);
-  content.append(title, caption);
-
-  card.append(viewport, content);
-  contentEl.replaceChildren(card);
-
-  return { card, image, placeholder, titleText, captionText };
+function bind(host) {
+  const find = (className) => host.querySelector(`.${className}`);
+  return {
+    image: find(MEDIA_CLS.IMAGE), placeholder: find(MEDIA_CLS.PLACEHOLDER),
+    titleText: leadingText(find(MEDIA_CLS.TITLE)), captionText: leadingText(find(MEDIA_CLS.CAPTION))
+  };
 }
 
-function update(pin, contents, bindings, cache) {
+function render(bindings, contents, cache) {
   const title = asText(contents.get('title'));
-  const url = primitives.safeUrl(contents.get('src'), '');
+  const url = safeUrl(contents.get('src'), '');
   const showImage = url !== '';
-
   setText(bindings.titleText, title);
   setText(bindings.captionText, contents.get('caption'));
-
   if (showImage) {
     setAttr(bindings.image, 'src', url, cache, 'src');
     setAttr(bindings.image, 'alt', title, cache, 'alt');
   }
   setVisible(bindings.image, showImage);
-  setVisible(bindings.placeholder, !showImage);
+  if (bindings.placeholder.hasAttribute('hidden') !== showImage) bindings.placeholder.toggleAttribute('hidden', showImage);
 }
 
 /* ------------------ REGISTRATION ------------------ */
 
-/** Register the media card, once per registry; see `./registrar.js`. */
-export const registerMediaCard = /* @__PURE__ */ makeRegistrar({
-  name: MEDIA_CARD_TYPE,
-  build,
-  update,
-  chrome: false,
-  allowedKeys: ALLOWED_KEYS
-});
+const SPEC = Object.freeze({ name: MEDIA_CARD_TYPE, html: HTML, keys: ['title', 'caption', 'src'], bind, render });
+
+/** Define the media card widget, once, and name the `focus` trait that frames it. @returns {object} its type */
+export function registerMediaCard() {
+  injectComponentStyles();
+  blit.use({ focus });
+  return widget(SPEC);
+}
 
 /**
- * Create a media card Pin, focussable for inspection.
- *
- * @param {CloudCanvasSession} session
- * @param {object} [options] `title`, `caption`, `src` become contents; the
- *   rest are Pin options
- * @returns {Pin}
+ * A media card in `parent`, framed by `focus` (padding 50, maxZoom 3.5). `title`,
+ * `caption` and `src` are contents; the rest is spec.
  */
-export function createMediaCardPin(session, options = {}) {
-  const { pinOptions, contents } = splitOptions(options, [
-    ['title', 'Visual Asset'],
-    ['caption', 'Architecture diagram preview'],
-    ['src', '']
-  ], { x: 100, y: 100, width: 240, height: 210 });
-
-  pinOptions.traits = [
-    new FocussableTrait({ padding: 50, maxZoom: 3.5 }),
-    ...(Array.isArray(pinOptions.traits) ? pinOptions.traits : [])
-  ];
-
-  return createComponentPin(session, registerMediaCard, pinOptions, contents, false);
+export function createMediaCard(parent, options = {}) {
+  registerMediaCard();
+  return parent.blit(widgetSpec(MEDIA_CARD_TYPE, withDefaults({
+    x: 100, y: 100, w: 240, h: 210, chrome: false,
+    title: 'Visual Asset', caption: 'Architecture diagram preview', src: '',
+    focus: { padding: 50, maxZoom: 3.5 }
+  }, options)));
 }

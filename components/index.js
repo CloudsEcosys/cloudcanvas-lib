@@ -2,25 +2,24 @@
  * CloudCanvas - NeoTec, LLC, Richard Christopher
  * Written by Richard Christopher, Copyright 2026 NeoTec, LLC
  *
- * The pre-built pin-board library's single door: nine components, two
- * behaviour traits, the stylesheet, and the one call that registers the set.
+ * The board components' single door: nine widgets (ten types - chat has a
+ * message and a composer), two function traits, the stylesheet, and the one
+ * call that registers the set.
  *
- * Every component is a `defineComponent` template pair (see `./registrar.js`)
- * with a lazy, memoised `register<Name>(registry?)` and a `create<Name>Pin`
- * factory; the behaviours a component exposes are plain functions taking the
- * Pin (`toggleTaskItem`, `setTelemetryReading`, ...), not methods on a trait
- * you have to fish out of it.
+ * Every component is a widget (`cloudcanvas/widget`) with a `register<Name>()`
+ * that defines it once and a `create<Name>(parent, options)` factory; the
+ * behaviours a component exposes are plain functions taking the blit
+ * (`toggleTaskItem`, `setTelemetryReading`, ...).
  *
- * REGISTRATION IS EXPLICIT. Importing this module registers nothing - that
- * was the exact defect two prior reviews flagged in the old
- * `src/components/index.js`, where importing a barrel mutated the shared
- * registry. Two ways in instead: `registerComponentTraits()` registers the
- * whole set (needed for a `type: 'sticky-note'` option or `hydrate()`'s
- * `data-cc-type`), and any factory registers just its own component on first
- * call, so most callers never need the first.
+ * REGISTRATION IS EXPLICIT. Importing this module registers nothing. Two ways
+ * in: `registerComponents()` defines the whole set and names the two traits
+ * (needed before a `type: 'sticky-note'` spec or a restore), and any factory
+ * defines just its own widget on first call, so most callers never need the first.
+ *
+ *   registerComponents();
+ *   app.blit({ type: 'task-card', taskCard: { title: 'Ship' }, editable: true, snapToGrid: { gridSize: 20 } });
  */
-
-import { traitRegistry } from '../../.plugin/index.js';
+import { blit } from '../../.plugin/core/index.js';
 
 /* ------------------ BOARD WIDGETS ------------------ */
 
@@ -29,7 +28,7 @@ export {
   STICKY_THEMES,
   STICKY_CLS,
   registerStickyNote,
-  createStickyNotePin,
+  createStickyNote,
   beginStickyEdit,
   endStickyEdit
 } from './sticky-note.js';
@@ -38,8 +37,9 @@ export {
   TASK_CARD_TYPE,
   TASK_CLS,
   TASK_PRIORITIES,
+  TASK_UPDATED_EVENT,
   registerTaskCard,
-  createTaskCardPin,
+  createTaskCard,
   toggleTaskItem,
   taskProgressOf
 } from './task-card.js';
@@ -48,8 +48,9 @@ export {
   TELEMETRY_GAUGE_TYPE,
   TELEMETRY_CLS,
   TELEMETRY_STATUSES,
+  TELEMETRY_ALERT_EVENT,
   registerTelemetryGauge,
-  createTelemetryPin,
+  createTelemetry,
   setTelemetryReading,
   telemetryStatusOf
 } from './telemetry-gauge.js';
@@ -59,7 +60,7 @@ export {
   FLOW_CLS,
   FLOW_PULSE_EVENT,
   registerFlowNode,
-  createFlowNodePin,
+  createFlowNode,
   pulseFlowNode,
   transmitFlowPulse
 } from './flow-node.js';
@@ -68,7 +69,7 @@ export {
   WORKSPACE_GROUP_TYPE,
   WORKSPACE_CLS,
   registerWorkspaceGroup,
-  createWorkspacePin,
+  createWorkspace,
   focusWorkspace
 } from './workspace-group.js';
 
@@ -76,7 +77,7 @@ export {
   MEDIA_CARD_TYPE,
   MEDIA_CLS,
   registerMediaCard,
-  createMediaCardPin
+  createMediaCard
 } from './media-card.js';
 
 /* ------------------ COMMUNICATION WIDGETS ------------------ */
@@ -86,7 +87,7 @@ export {
   BREADCRUMB_CLS,
   BACK_EVENT,
   registerBreadcrumbBar,
-  createBreadcrumbPin,
+  createBreadcrumb,
   navigateBreadcrumbBack
 } from './breadcrumb-bar.js';
 
@@ -98,8 +99,8 @@ export {
   SENT_EVENT,
   registerChatMessage,
   registerChatInput,
-  createChatMessagePin,
-  createChatInputPin,
+  createChatMessage,
+  createChatInput,
   toggleChatReaction,
   sendChatMessage
 } from './chat-message.js';
@@ -111,15 +112,15 @@ export {
   ACKNOWLEDGED_EVENT,
   RESOLVED_EVENT,
   registerCalendarEvent,
-  createCalendarEventPin,
+  createCalendarEvent,
   acknowledgeCalendarEvent,
   resolveCalendarEvent
 } from './calendar-event.js';
 
 /* ------------------ BEHAVIOUR TRAITS ------------------ */
 
-export { EditableTrait, EDITABLE_INPUT_CLASS, EDITED_EVENT, DEFAULT_EDITABLE_SELECTOR } from './traits/editable.js';
-export { SnapToGridTrait } from './traits/snap-to-grid.js';
+export { editable, beginInlineEdit, EDITABLE_INPUT_CLASS, EDITED_EVENT, DEFAULT_EDITABLE_SELECTOR } from './traits/editable.js';
+export { snapToGrid, snapPosition, snapBox } from './traits/snap-to-grid.js';
 
 /* ------------------ STYLES ------------------ */
 
@@ -147,10 +148,10 @@ import { registerMediaCard } from './media-card.js';
 import { registerBreadcrumbBar } from './breadcrumb-bar.js';
 import { registerChatMessage, registerChatInput } from './chat-message.js';
 import { registerCalendarEvent } from './calendar-event.js';
-import { EditableTrait } from './traits/editable.js';
-import { SnapToGridTrait } from './traits/snap-to-grid.js';
+import { editable } from './traits/editable.js';
+import { snapToGrid } from './traits/snap-to-grid.js';
 
-/** Every component registrar, in the order the barrel exports them. */
+/** Every component's registration, in the order the barrel exports them. */
 const REGISTRARS = /* @__PURE__ */ Object.freeze([
   registerStickyNote,
   registerTaskCard,
@@ -164,28 +165,13 @@ const REGISTRARS = /* @__PURE__ */ Object.freeze([
   registerCalendarEvent
 ]);
 
-/** The two behaviour traits, registered by constructor with their defaults. */
-const BEHAVIOUR_TRAITS = /* @__PURE__ */ Object.freeze([
-  ['editable', EditableTrait, { targetKey: 'title' }],
-  ['snap-to-grid', SnapToGridTrait, { gridSize: 24 }]
-]);
-
 /**
- * Register every component and behaviour trait in the library.
- *
- * Safe to call more than once - each registrar memoises its handle, and a
- * behaviour trait already present is left alone - and safe to call before a
- * session exists, since a definition is data.
- *
- * @param {TraitRegistry} [registry] target registry; the shared singleton by default
- * @returns {object[]} the component handles, in registration order
+ * Define every component widget and name the two traits (`editable`, `snapToGrid`).
+ * Safe to call more than once: each definition and name is idempotent.
+ * @returns {string[]} the type names, in registration order
  */
-export function registerComponentTraits(registry = traitRegistry) {
-  if (!registry || typeof registry.register !== 'function') return [];
-
-  const handles = REGISTRARS.map((register) => register(registry));
-  for (const [name, ctor, defaults] of BEHAVIOUR_TRAITS) {
-    if (!registry.has(name)) registry.register(name, ctor, defaults);
-  }
-  return handles;
+export function registerComponents() {
+  const names = REGISTRARS.map((register) => register().el.getAttribute('data-type'));
+  blit.use({ editable, snapToGrid });
+  return names;
 }

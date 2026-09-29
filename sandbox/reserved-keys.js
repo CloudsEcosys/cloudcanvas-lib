@@ -5,22 +5,23 @@
  * The reserved-key rule: which content keys a saved canvas or a custom-type
  * definition may never carry. One definition, shared by every surface that
  * enforces it - the builder's author/import gate and custom-type loader (`.site`)
- * import it from here, and the session loader (`./restore-tree.js`) holds the same
+ * import it from here, and the board loader (`./restore-tree.js`) holds the same
  * literals inline, because it is stringified into exported pages; a unit test
  * holds the inline copy equal to this one, by value and by behaviour.
  *
- * It lives beside the session loader rather than in the builder because the
+ * It lives beside the board loader rather than in the builder because the
  * loader is the lower layer: a saved canvas is refused these keys whether or not
  * any builder code is on the page.
  */
 
-import { HTML_KEY } from '../../.plugin/index.js';
+/** The one content key a card renders as markup (`cloudcanvas/types`). */
+export const HTML_KEY = 'html';
 
 /**
  * The content key a placed custom-type instance carries its source type's name
  * under. Written by the placer, carried in `fill` so it round-trips like any other
  * content, and named with a `cc:` prefix no user field can collide with. The
- * session loader treats a node carrying it as an instance.
+ * board loader treats a node carrying it as an instance.
  */
 export const TYPE_NAME_KEY = 'cc:typeName';
 

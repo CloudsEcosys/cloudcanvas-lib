@@ -4,6 +4,8 @@
  *
  * Alert: a toned message, optionally dismissible.
  *
+ *   const saved = createAlert(app, { x: 40, y: 40, title: 'Saved', message: 'All good', tone: 'success' });
+ *
  * The role is a function of the tone, and it is written on every pass rather
  * than at build: `warning` and `danger` are `role="alert"`, which interrupts,
  * and `info` and `success` are `role="status"`, which waits its turn. Changing
@@ -28,9 +30,10 @@
  * no text is printed on.
  */
 
-import { primitives, setAttr, setText, setVisible } from '../../.plugin/index.js';
+import { leadingText, setAttr, setText, setVisible } from '../../.plugin/addons/widget.js';
+import { BADGE_TEXT_OVERRIDE_TOKEN } from '../../.plugin/graphics/primitives/primitives.js';
 import { toneSurface } from './badge.js';
-import { defineWidget, leadingText } from './widget.js';
+import { defineWidget } from './widget.js';
 
 const NAME = 'alert';
 const ROOT_CLASS = 'cloudcanvas-lib-alert';
@@ -58,7 +61,7 @@ function toneStyle(tone) {
   // the dark-theme computation as the fallback: a light theme sets that one
   // token and the panel's text flips to dark with no re-render, while an
   // unthemed page keeps the computed dark-card colour.
-  const text = `var(${primitives.BADGE_TEXT_OVERRIDE_TOKEN}, ${surface.text})`;
+  const text = `var(${BADGE_TEXT_OVERRIDE_TOKEN}, ${surface.text})`;
   return `--cc-scope-bg:${surface.background};`
     + `--cc-card-border:${surface.border};`
     + `--cc-text:${text};`
@@ -103,11 +106,8 @@ const widget = /* @__PURE__ */ defineWidget({
   render
 });
 
-/** Register the Alert Pin component once; a second call returns the same handle. */
-export const registerAlert = widget.register;
+/** Define the Alert widget, once. @returns {object} its type */
+export const registerAlert = widget.define;
 
-/** Create an Alert Pin on `session`; see `./text.js` on the option order. */
-export const createAlertPin = widget.create;
-
-/** The core `alert` type: `root.blit({ type: 'alert', alert: { title, message, tone, dismissible } })`. */
-export const alertType = widget.define;
+/** A chromeless Alert blit in `parent`: `createAlert(app, { x, y, title, message, tone, dismissible })`. */
+export const createAlert = widget.create;

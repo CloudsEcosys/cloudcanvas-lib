@@ -14,26 +14,23 @@
  *     it is what makes "the sandboxes" an enumerable set rather than a guess.
  *
  *   - Every entry point returns rather than throws when there is no storage.
- *     The guard is `typeof localStorage === 'undefined'`, matching how the core
- *     guards its own DOM access (`typeof document === 'undefined'` in
- *     `src/pins/pin-element.js` and `src/engine/session.js`): a module rendered
- *     on a server, or imported in a bare Node process, has to load and no-op,
- *     not explode.
+ *     The guard is `typeof localStorage === 'undefined'`: a module rendered on a
+ *     server, or imported in a bare Node process, has to load and no-op, not
+ *     explode.
  *
  * A quota failure is not swallowed. Storage that exists but refuses the write
  * is a real condition the caller has to see - unlike storage that does not
  * exist at all, which is a rendering context, not an error.
  *
- * `autoSaveSession` sits on top of that same write and inverts exactly one of
+ * `autoSaveBoard` sits on top of that same write and inverts exactly one of
  * those two decisions: a timer cannot throw at anybody, so it reports a quota
  * failure through `onError` instead. It is caller-driven - `markDirty()` is a
- * hand-written call, not a subscription - because there is no "the session
- * changed" event in this codebase to subscribe to. A saver that pretended
- * otherwise would be a polling loop wearing an observer's name.
+ * hand-written call, not a subscription - because only the caller knows which
+ * changes are edits worth saving.
  */
 
-import { createLogger } from '../../.plugin/index.js';
-import { SandboxFormatError, deserializeSession, serializeSession } from './serialize.js';
+import { createLogger } from '../../.plugin/log.js';
+import { SandboxFormatError, deserializeBoard, serializeBoard } from './serialize.js';
 
 const logger = /* @__PURE__ */ createLogger('sandbox/persistence');
 
@@ -55,22 +52,22 @@ function namespaced(key) {
 }
 
 /**
- * Write a session's snapshot under `key`.
+ * Write a board's snapshot under `key`.
  *
  * @param {string} key sandbox name, un-namespaced
- * @param {CloudCanvasSession} session
+ * @param {object} app the board's root blit
  * @returns {boolean} false when there is no storage to write to
  */
-export function saveSandbox(key, session) {
+export function saveSandbox(key, app) {
   const store = storage();
   if (!store) return false;
 
-  store.setItem(namespaced(key), JSON.stringify(serializeSession(session)));
+  store.setItem(namespaced(key), JSON.stringify(serializeBoard(app)));
   return true;
 }
 
 /**
- * Restore a saved snapshot into a session.
+ * Restore a saved snapshot onto a board.
  *
  * A key that was never saved, a key holding text that is not a snapshot, and a
  * snapshot in a format version this build cannot read all resolve to `null`; a v1
@@ -79,10 +76,10 @@ export function saveSandbox(key, session) {
  * picker nobody can open.
  *
  * @param {string} key sandbox name, un-namespaced
- * @param {CloudCanvasSession} session the session to rebuild into
- * @returns {{pins: Pin[], warnings: string[]}|null}
+ * @param {object} app the board to rebuild onto
+ * @returns {{blits: object[], warnings: string[]}|null}
  */
-export function loadSandbox(key, session) {
+export function loadSandbox(key, app) {
   const store = storage();
   if (!store) return null;
 
@@ -99,7 +96,7 @@ export function loadSandbox(key, session) {
 
   if (!data || typeof data !== 'object') return null;
   try {
-    return deserializeSession(session, data);
+    return deserializeBoard(app, data);
   } catch (error) {
     // Already logged by the format door; an unreadable save is a stale entry, not a crash.
     if (error instanceof SandboxFormatError) return null;
@@ -147,13 +144,13 @@ export function deleteSandbox(key) {
 
 /* ------------------ AUTO-SAVE ------------------ */
 
-/** How long a session stays quiet before an auto-save actually writes. */
+/** How long a board stays quiet before an auto-save actually writes. */
 export const AUTO_SAVE_DEBOUNCE_MS = 800;
 
 /**
  * The window to hang the unload hook on, or null wherever there is not one.
  *
- * Same shape as `storage()` above, and for the same reason: a session driven
+ * Same shape as `storage()` above, and for the same reason: a board driven
  * from a bare Node process has no `window` to lose an edit on, so the missing
  * one is a context, not a failure. The `addEventListener` check is not
  * defensive padding - happy-dom registers a `window` whose event surface is
@@ -165,7 +162,7 @@ function unloadTarget() {
 }
 
 /**
- * Debounced auto-save for a live session against one localStorage key.
+ * Debounced auto-save for a live board against one localStorage key.
  *
  * The caller marks the moment something changed; this decides when to actually
  * persist. Trailing edge, not throttled: a burst of `markDirty()` calls writes
@@ -182,14 +179,14 @@ function unloadTarget() {
  * the same `timer` / `dirty` / `stopped` triple, and that state is the closure.
  *
  * @param {string} key sandbox name, un-namespaced
- * @param {CloudCanvasSession} session the live session to snapshot
+ * @param {object} app the live board to snapshot
  * @param {{debounceMs?: number, onSave?: (key: string) => void, onError?: (error: Error) => void}} [options]
  * @returns {{markDirty: () => void, flush: () => void, stop: () => void}}
  */
-export function autoSaveSession(key, session, options = {}) {
+export function autoSaveBoard(key, app, options = {}) {
   const { debounceMs = AUTO_SAVE_DEBOUNCE_MS, onSave, onError } = options;
   if (typeof key !== 'string' || key.length === 0) {
-    throw new TypeError('autoSaveSession: a non-empty sandbox key is required');
+    throw new TypeError('autoSaveBoard: a non-empty sandbox key is required');
   }
 
   const target = unloadTarget();
@@ -197,13 +194,13 @@ export function autoSaveSession(key, session, options = {}) {
   let dirty = false;
   let stopped = false;
 
-  /** Write now, and count the session clean whether or not the write landed. */
+  /** Write now, and count the board clean whether or not the write landed. */
   function write() {
     timer = null;
     dirty = false;
     try {
       // `false` means there was no storage at all: nothing saved, nothing wrong.
-      if (saveSandbox(key, session) && onSave) onSave(key);
+      if (saveSandbox(key, app) && onSave) onSave(key);
     } catch (error) {
       if (onError) onError(error);
     }

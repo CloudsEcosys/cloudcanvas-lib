@@ -42,7 +42,7 @@
  * `./session-parts.js`; v1 is migrated on load by `./migrate-v1.js`.
  */
 
-import { createLogger } from '../../.plugin/index.js';
+import { createLogger } from '../../.plugin/log.js';
 import { migrateV1 } from './migrate-v1.js';
 
 const logger = /* @__PURE__ */ createLogger('sandbox/format');

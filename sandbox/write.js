@@ -2,167 +2,132 @@
  * CloudCanvas - NeoTec, LLC, Richard Christopher
  * Written by Richard Christopher, Copyright 2026 NeoTec, LLC
  *
- * The writer: a live session out to a v2 document (`./format.js`).
+ * The writer: a live board out to a v2 document (`./format.js`).
  *
- * The tree is walked through the public surface only - `pinManager.getRootPins()`
- * for the roots, `children` for membership - so a save is exactly what the
- * framework considers the canvas to be, and utility blits (the cursor) never
- * appear. Sibling order is read from the live DOM (`orderedByPaint`), at the root
- * and in every scope, because paint order is document order and that is the only
- * place a bring-to-front / send-to-back is recorded.
+ * A node is read off its blit's `spec` - the keys the blit carries - and
+ * reshaped into the format's order and defaults. Children are the blits
+ * directly inside, in document order (which is paint order), an offloaded one
+ * read through its anchor so it is saved where it sits.
  *
- * What a spec captures, and what it does not:
- *   - `type` is the display type's registry name, and only when the registry can
- *     still resolve it; an anonymous display is left out and rebuilds as the default.
- *   - every other trait is a NAME (`name: true`), not its state: a trait restored
- *     by name is freshly initialised. Anything that must survive belongs in `fill`.
- *   - `fill` is the content map, JSON-safe (functions and `undefined` drop out).
- *   - physics state and vectors are not captured; neither is `active`, which the
- *     reload strategy derives at construction.
- *   - `chrome` is read off the element's class list, the one field with no public
- *     reader; `bordered`, `layout`, `gap`, `selectableText` and `style` (only the
- *     allow-listed overrides set inline) are public accessors.
- *   - `class` is the authored names a load declared (`data-class`, written by
- *     `restoreTree`) that the element still wears; engine and trait classes never.
+ *   - `type` only when it is a registered type;
+ *   - `fill` is the contents: a widget's trait options, else the core `fill`;
+ *   - a named trait is `name: true`, or `name: options` when it carries them;
+ *   - `chrome`, `bordered`, `selectableText`, `layout`, `gap`, the style overrides
+ *     in force (`styleMap`) and the authored `class` (recorded in `data-class`)
+ *     only when off their default;
+ *   - `w`/`h` are the size in force, measured or declared.
  */
-
-import { createLogger, traitRegistry } from '../../.plugin/index.js';
+import { blit, type } from '../../.plugin/core/index.js';
+import { parkedStateOf } from '../../.plugin/addons/offload.js';
+import { styleMap } from '../../.plugin/addons/style.js';
+import { contentKeyOf } from '../../.plugin/addons/widget.js';
+import { createLogger } from '../../.plugin/log.js';
 import { SANDBOX_FORMAT_VERSION } from './format.js';
 import { PROTOTYPE_KEYS } from './reserved-keys.js';
 import { NODE_KEYS } from './restore-tree.js';
-import { writeSessionParts } from './session-parts.js';
+import { writeBoardParts } from './board-parts.js';
 
 const logger = /* @__PURE__ */ createLogger('sandbox/write');
 
-/**
- * The default card surface's class. Mirrors a constant the core does not export
- * (`CARD_CLASS` in `.plugin/pins/pin-element.js`); see the header note on `chrome`.
- */
-const CARD_CLASS = 'cloudcanvas-primitive-card';
+/** Spec keys the node gives a place of its own, never written as traits. */
+const OWN_KEYS = /* @__PURE__ */ new Set([...NODE_KEYS, 'editing']);
 
-/** The display type as a registry name, or null for an anonymous or unregistered one. */
-function displayTypeOf(pin) {
-  const trait = pin.displayTrait;
-  const name = trait ? trait.name : null;
-  return typeof name === 'string' && traitRegistry.has(name) ? name : null;
+/** The blits directly inside `node`, parked ones included, in document order. */
+export function childrenOf(node, out = []) {
+  for (const child of node.childNodes) {
+    if (child.nodeType === 8) {
+      const parked = parkedStateOf(child);
+      if (parked?.handle) out.push(parked.handle);
+    } else if (child.nodeType === 1) {
+      if (child.hasAttribute('data-blit')) out.push(blit(child));
+      else childrenOf(child, out);
+    }
+  }
+  return out;
 }
 
-/** The content map as a plain, JSON-safe object; prototype keys are never written. */
-function fillOf(pin) {
+/** The contents as a plain, JSON-safe object; prototype keys are never written. */
+function fillOf(b, spec) {
+  const key = contentKeyOf(b);
+  const source = key ? spec[key] : spec.fill;
   const fill = {};
-  for (const [key, value] of pin.contents) {
-    if (value === undefined || typeof value === 'function' || PROTOTYPE_KEYS.includes(key)) continue;
-    fill[key] = value;
+  if (!source || typeof source !== 'object') return fill;
+  for (const [name, value] of Object.entries(source)) {
+    if (value === undefined || typeof value === 'function' || PROTOTYPE_KEYS.includes(name)) continue;
+    fill[name] = value;
   }
   return fill;
 }
 
-/**
- * Siblings in the order they paint, not the order they were made: the container's
- * live child order, mapped back by element identity. The container holds other
- * layers (the focus veil, the SVG layer) that belong to no blit, so only mapped
- * elements are placed; a sibling with no element there (unmounted, headless) keeps
- * its model order after everything the DOM placed.
- * @param {object[]} pins the sibling set, utility blits already removed
- * @param {Element|null} container the element their elements are children of
- */
-function orderedByPaint(pins, container) {
-  const domChildren = container && container.children ? container.children : null;
-  if (!domChildren || pins.length < 2) return pins;
-
-  const ownerOf = new Map();
-  for (const pin of pins) if (pin.element) ownerOf.set(pin.element, pin);
-
-  const ordered = [];
-  const placed = new Set();
-  for (const node of Array.from(domChildren)) {
-    const pin = ownerOf.get(node);
-    if (pin && !placed.has(pin)) { ordered.push(pin); placed.add(pin); }
-  }
-  for (const pin of pins) if (!placed.has(pin)) ordered.push(pin);
-  return ordered;
-}
-
-/** A blit's children in paint order; the container is its own scope well. */
-function orderedChildren(pin) {
-  return orderedByPaint(Array.from(pin.children).filter((child) => !child.utility), pin.scopeElement);
-}
-
-/** A session's roots in paint order; their shared container is the canvas plane. */
-function orderedRoots(session) {
-  const roots = session.pinManager.getRootPins();
-  const plane = roots.find((pin) => pin.element && pin.element.parentNode);
-  return orderedByPaint(roots, plane ? plane.element.parentNode : null);
-}
-
-/** Every trait but the display type's own as a `name: true` key. */
-function writeTraits(pin, spec) {
-  for (const name of pin.traits.keys()) {
-    if (name === spec.type) continue;
-    if (NODE_KEYS.includes(name) || PROTOTYPE_KEYS.includes(name)) {
-      logger.warn(`pin "${pin.id}": trait "${name}" collides with a spec key and is not saved`);
+/** Every named trait but the contents key: `true`, or the options it carries. */
+function writeTraits(b, spec, node) {
+  const names = new Set(blit.use());
+  const contentKey = contentKeyOf(b);
+  for (const [name, value] of Object.entries(spec)) {
+    if (OWN_KEYS.has(name) || name === contentKey || !names.has(name)) continue;
+    if (PROTOTYPE_KEYS.includes(name)) {
+      logger.warn(`blit "${node.id}": trait "${name}" collides with a spec key and is not saved`);
       continue;
     }
-    spec[name] = true;
+    if (value !== false && value !== undefined) node[name] = value;
   }
 }
 
 /** Surface and flow, each only when it differs from the default. */
-function writeSurface(pin, spec) {
-  const classList = pin.element ? pin.element.classList : null;
-  if (pin.reload && pin.reload !== 'active') spec.reload = pin.reload;
-  if (!(classList && classList.contains(CARD_CLASS))) spec.chrome = false;
-  if (pin.bordered === false) spec.bordered = false;
-  if (pin.layout && pin.layout !== 'free') spec.layout = pin.layout;
-  if (Number.isFinite(pin.layoutGap)) spec.gap = pin.layoutGap;
-  if (pin.selectableText === true) spec.selectableText = true;
-  const style = typeof pin.styleOverrides === 'object' ? pin.styleOverrides : null;
-  if (style && Object.keys(style).length > 0) spec.style = style;
-  const names = authoredClassesOf(pin.element);
-  if (names) spec.class = names;
+function writeSurface(b, spec, node) {
+  if (spec.chrome === 'false') node.chrome = false;
+  if (spec.bordered === 'false') node.bordered = false;
+  if (spec.layout && spec.layout !== 'free' && spec.layout !== true) node.layout = spec.layout;
+  const gap = Number(spec.gap);
+  if (spec.gap !== undefined && Number.isFinite(gap)) node.gap = gap;
+  if (spec.selectableText === 'true') node.selectableText = true;
+  const style = styleMap(b);
+  if (Object.keys(style).length > 0) node.style = style;
+  const names = authoredClassesOf(b.el);
+  if (names) node.class = names;
 }
 
 /** The authored class names an element was given and still wears, or null. */
 function authoredClassesOf(element) {
-  const declared = element ? element.getAttribute('data-class') : null;
+  const declared = element.getAttribute('data-class');
   if (!declared) return null;
   const worn = declared.split(/\s+/).filter((name) => name && element.classList.contains(name));
   return worn.length > 0 ? worn.join(' ') : null;
 }
 
 /**
- * One blit and its subtree as a v2 spec.
- * @param {object} pin
+ * One blit and its subtree as a v2 node.
+ * @param {object} b
  * @returns {object}
  */
-export function serializePin(pin) {
-  const spec = { id: pin.id, x: pin.x, y: pin.y };
-  const type = displayTypeOf(pin);
-  if (type) spec.type = type;
-  if (pin.z !== 0) spec.z = pin.z;
-  if (pin.size.w > 0) spec.w = pin.size.w;
-  if (pin.size.h > 0) spec.h = pin.size.h;
+export function serializeBlit(b) {
+  const spec = b.spec;
+  const node = { id: b.el.id, x: b.x, y: b.y };
+  if (spec.type && type(spec.type)) node.type = spec.type;
+  if (b.z !== 0) node.z = b.z;
+  const { w, h } = b.size;
+  if (w > 0) node.w = w;
+  if (h > 0) node.h = h;
 
-  const fill = fillOf(pin);
-  if (Object.keys(fill).length > 0) spec.fill = fill;
-  writeTraits(pin, spec);
-  writeSurface(pin, spec);
+  const fill = fillOf(b, spec);
+  if (Object.keys(fill).length > 0) node.fill = fill;
+  if (spec.port) node.port = spec.port;
+  writeTraits(b, spec, node);
+  writeSurface(b, spec, node);
 
-  const children = orderedChildren(pin).map(serializePin);
-  if (children.length > 0) spec.blits = children;
-  return spec;
+  const children = childrenOf(b.el).map(serializeBlit);
+  if (children.length > 0) node.blits = children;
+  return node;
 }
 
 /**
- * A whole session as a v2 document.
- * @param {object} session a CloudCanvas session
+ * A whole board as a v2 document.
+ * @param {object} app the board's root blit
  * @returns {{version: 2, blits: object[]}}
  */
-export function serializeSession(session) {
-  if (!session || !session.pinManager) {
-    throw new TypeError('serializeSession: a CloudCanvasSession is required');
-  }
-  const saved = { version: SANDBOX_FORMAT_VERSION, blits: orderedRoots(session).map(serializePin) };
-  writeSessionParts(session, saved);
+export function serializeBoard(app) {
+  if (!app || typeof app.find !== 'function') throw new TypeError('serializeBoard: a root blit is required');
+  const saved = { version: SANDBOX_FORMAT_VERSION, blits: childrenOf(app.el).map(serializeBlit) };
+  writeBoardParts(app, saved);
   return saved;
 }

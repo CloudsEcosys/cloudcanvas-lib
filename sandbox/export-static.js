@@ -5,7 +5,8 @@
  * Standalone static-site export: a sandbox as a zip you can unzip and open.
  *
  * The archive holds exactly two files - a generated `index.html` and the
- * already-built `dist/cloudcanvas.iife.js` next to it - and the page loads from
+ * already-built board runtime `dist/cloudcanvas.board.iife.js` next to it (the
+ * core, the add-ons, the widget kit: `./runtime.js`) - and the page loads from
  * a `file://` URL with no server, no import map and no network request. The IIFE
  * bundle is the only form that can: Chromium fetches module scripts in CORS
  * mode and a `file://` origin is always denied, which is the same reason
@@ -41,13 +42,13 @@
 
 import { readDocument } from './format.js';
 import { LOADER_FUNCTIONS } from './restore-tree.js';
-import { serializeSession } from './write.js';
+import { serializeBoard } from './write.js';
 import { createZip, downloadZip } from './zip.js';
 
 /** The bundle's name inside the archive, and the src the page asks for. */
-export const BUNDLE_FILENAME = 'cloudcanvas.iife.js';
+export const BUNDLE_FILENAME = 'cloudcanvas.board.iife.js';
 
-/** Where the session mounts in the exported page. */
+/** Where the board mounts in the exported page. */
 export const ROOT_ID = 'cloudcanvas-root';
 
 /** The `<script>` the snapshot is embedded in, read back at boot. */
@@ -66,7 +67,7 @@ const DEFAULT_TITLE = 'CloudCanvas Sandbox';
  * deliberately does not size for you: a canvas host is the page's layout
  * decision, not the engine's. Two answers, then. With no page size the host
  * fills the window. With one, it is a box of that size, centred, and the
- * window scrolls when it is the smaller of the two; the session inside mounts
+ * window scrolls when it is the smaller of the two; the board inside mounts
  * with its camera at rest, so canvas (0, 0) is the box's top-left corner - the
  * corner the Sandbox anchors its frame at.
  *
@@ -132,7 +133,7 @@ function escapeJsonForScript(json) {
 
 /**
  * The boot script: the loader's functions, then parse the embedded v2 snapshot,
- * start a session, rebuild it.
+ * mount a board, rebuild it, load its reactions and theme, and open the home page.
  *
  * `readyState` is checked as well as listened for. The script tag sits last in
  * the body, so `DOMContentLoaded` has not fired yet and the listener is the one
@@ -146,33 +147,18 @@ function bootScript() {
     LOADER_FUNCTIONS.map(String).join('\n'),
     '',
     '  function boot() {',
-    `    var raw = document.getElementById(${JSON.stringify(DATA_ID)}).textContent;`,
-    '    var data = JSON.parse(raw);',
+    '    var CC = window.CloudCanvas;',
+    `    var data = JSON.parse(document.getElementById(${JSON.stringify(DATA_ID)}).textContent);`,
     '    var warnings = [];',
-    '    var session = window.CloudCanvas.createCanvasSession({',
-    `      container: document.getElementById(${JSON.stringify(ROOT_ID)})`,
-    '    });',
-    '    restoreTree(window.CloudCanvas, session, data.blits, warnings);',
-    '    if (data.reactions && data.reactions.length && window.CloudCanvas.attachReactions) {',
-    '      window.CloudCanvas.attachReactions(session, { bindings: reactionsFromWire(data.reactions) });',
-    '    }',
-    '    if (data.theme && window.CloudCanvas.applyTheme) {',
-    '      window.CloudCanvas.applyTheme(session.hostElement, data.theme);',
-    '    }',
-    '    if (data.pages && data.pages.length) {',
-    '      var homeId = null;',
-    '      for (var i = 0; i < data.pages.length; i++) {',
-    '        if (data.pages[i].home) {',
-    '          homeId = data.pages[i].id;',
-    '          break;',
-    '        }',
-    '      }',
-    '      if (homeId && session.focus) {',
-    '        var homePin = session.getPin(homeId);',
-    '        if (homePin) session.focus(homePin, { promote: true });',
-    '      }',
-    '    }',
-    '    window.cloudcanvas = session;',
+    '    CC.registerKit();',
+    `    var app = CC.createBoard(document.getElementById(${JSON.stringify(ROOT_ID)}), { label: document.title });`,
+    '    restoreTree(CC.loaderApi, app, data.blits, warnings);',
+    '    CC.reactionsOf(app).load(data.reactions, { exists: function (id) { return Boolean(app.find(id)); } });',
+    '    if (data.theme) CC.applyTheme(app.el, data.theme);',
+    '    var home = (data.pages || []).filter(function (page) { return page.home; })[0];',
+    '    var target = home ? app.find(home.id) : null;',
+    '    if (target) CC.go(app, target, { immediate: true });',
+    '    window.cloudcanvas = app;',
     '    window.cloudcanvasWarnings = warnings;',
     '  }',
     '',
@@ -232,57 +218,57 @@ export function renderStaticHtml(snapshot, options = {}) {
  * of a zip - a build step, a test that wants the page on disk - needs the files
  * and not the container.
  *
- * @param {CloudCanvasSession} session
+ * @param {object} app the board's root blit
  * @param {object} options
- * @param {string|Uint8Array} options.bundle the built IIFE bundle's contents
+ * @param {string|Uint8Array} options.bundle the built board runtime's contents
  * @param {string} [options.title]
  * @param {{width: number, height: number}} [options.page] see {@link renderStaticHtml}
  * @returns {Array<{name: string, content: string|Uint8Array}>}
  */
-export function buildStaticSite(session, options = {}) {
+export function buildStaticSite(app, options = {}) {
   const bundle = options.bundle;
   if (typeof bundle !== 'string' && !(bundle instanceof Uint8Array)) {
     throw new TypeError(
-      'buildStaticSite: `bundle` must be the contents of dist/cloudcanvas.iife.js '
+      `buildStaticSite: \`bundle\` must be the contents of dist/${BUNDLE_FILENAME} `
       + '(a string or Uint8Array); this module cannot read the filesystem'
     );
   }
 
   return [
-    { name: 'index.html', content: renderStaticHtml(serializeSession(session), options) },
+    { name: 'index.html', content: renderStaticHtml(serializeBoard(app), options) },
     { name: BUNDLE_FILENAME, content: bundle }
   ];
 }
 
 /**
- * A session as a standalone static site, zipped.
+ * A board as a standalone static site, zipped.
  *
- * @param {CloudCanvasSession} session
+ * @param {object} app the board's root blit
  * @param {object} options see {@link buildStaticSite}
  * @returns {Uint8Array} the archive
  */
-export function exportStaticSite(session, options = {}) {
-  return createZip(buildStaticSite(session, options));
+export function exportStaticSite(app, options = {}) {
+  return createZip(buildStaticSite(app, options));
 }
 
 /**
- * Export a session and hand the archive to the browser as a download.
+ * Export a board and hand the archive to the browser as a download.
  *
  * Async only because of the bundle: pass `options.bundle` and nothing is
  * fetched. The default fetch is same-origin against the page's own `dist/`,
  * which is where a page that loaded CloudCanvas from a bundle already has one.
  *
- * @param {CloudCanvasSession} session
+ * @param {object} app the board's root blit
  * @param {string} [filename]
  * @param {object} [options] `bundle`, `bundleUrl`, `title`, `page`
  * @returns {Promise<boolean>} false when there is no document to download into
  */
-export async function downloadStaticSite(session, filename = 'cloudcanvas-sandbox.zip', options = {}) {
+export async function downloadStaticSite(app, filename = 'cloudcanvas-sandbox.zip', options = {}) {
   const bundle = options.bundle !== undefined
     ? options.bundle
     : await fetchBundle(options.bundleUrl || DEFAULT_BUNDLE_URL);
 
-  return downloadZip(filename, buildStaticSite(session, { ...options, bundle }));
+  return downloadZip(filename, buildStaticSite(app, { ...options, bundle }));
 }
 
 /** Read the built bundle over the network, failing loudly on a bad response. */

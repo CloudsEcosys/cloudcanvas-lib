@@ -2,7 +2,10 @@
  * CloudCanvas - NeoTec, LLC, Richard Christopher
  * Written by Richard Christopher, Copyright 2026 NeoTec, LLC
  *
- * Toggle: a switch that is a real `<input type="checkbox">` underneath.
+ * Toggle: a switch that is a real `<input type="checkbox">` underneath, as a widget.
+ *
+ *   registerToggle();
+ *   const live = createToggle(app, { x: 40, y: 40, label: 'Live', checked: true });
  *
  * `role="switch"` is the only thing that separates it from `./checkbox.js`, and
  * it is worth exactly one extra obligation: an explicit `aria-checked`. Some
@@ -10,122 +13,66 @@
  * the native element once the role has been overridden, so the state has to be
  * said twice - the property for the platform, the attribute for the role.
  *
- * Two writers keep it in step, and both are needed: `update` writes it from the
- * model, and the change handler writes it inline, because the commit is only an
- * invalidation and an attached renderer serves that on the *next* frame - a
- * switch that announces last frame's state at the moment it is pressed is
- * exactly the bug the explicit attribute exists to prevent.
- *
- * Both go through `setAttr` against one shared diff record (`bindings`, keyed
- * `aria`) rather than the per-render `cache`. Two writers and one cache the
- * handler cannot reach is how a diff-first write silently stops writing: the
- * cache would still hold what the last render wrote, and the next genuine
- * change would be skipped as a no-op.
+ * One writer keeps them in step: the render, which a commit runs at once (a
+ * widget write renders synchronously), so the switch never announces a state a
+ * frame behind the one it paints. The attribute is diffed against the DOM
+ * itself, not a cache, so no second writer can leave a stale record behind.
  *
  * The track and thumb are the stylesheet's (`appearance: none` plus an
  * `::after`), not a div sandwich: keeping the native checkbox keeps its keyboard
  * operation, its focus behaviour and its label association whole.
  */
+import { blit } from '../../.plugin/core/index.js';
+import { leadingText, widget, widgetSpec } from '../../.plugin/addons/widget.js';
+import { injectLibStyles } from '../styles.js';
+import { commitOn, linkLabel, renderLabel, setFlag } from './control.js';
 
-import {
-  defineComponent,
-  makeElement,
-  makeTextNode,
-  setAttr,
-  setText,
-  setVisible,
-  PinEvent
-} from '../../.plugin/index.js';
-
-/** Registry name, and the `type` a caller creates a Pin by. */
+/** The type name. */
 const NAME = 'toggle';
 
 const ROOT_CLASS = 'cloudcanvas-lib-toggle';
 const CONTROL_CLASS = 'cloudcanvas-lib-toggle-control';
 const LABEL_CLASS = 'cloudcanvas-lib-toggle-label';
 
-/** The content keys a Toggle accepts; anything else is refused by `setContents`. */
-const ALLOWED_KEYS = ['label', 'checked', 'disabled'];
-
-/**
- * Write the ARIA mirror through the one diff record both writers share.
- * @param {object} bindings doubles as that record, under the key `aria`
- */
-function writeAriaChecked(control, checked, bindings) {
-  setAttr(control, 'aria-checked', String(checked), bindings, 'aria');
+/** The switch and its label, named from the blit's element id; the change commits and is re-issued. */
+function bind(host, on) {
+  const root = host.querySelector(`.${ROOT_CLASS}`);
+  const control = root.querySelector(`.${CONTROL_CLASS}`);
+  const label = root.querySelector(`.${LABEL_CLASS}`);
+  linkLabel(host, control, label);
+  commitOn(on, blit(host), control, 'change', 'checked', (element) => element.checked);
+  return { root, control, label, labelText: leadingText(label) };
 }
 
-/**
- * Build once: the switch, its label, and the change listener.
- *
- * The control's native `input` / `change` stop at the control and are re-issued
- * as the Pin's own event, the way a custom element encapsulates its inner events.
- */
-function build(pin, contentEl) {
-  const root = makeElement('div', ROOT_CLASS);
-
-  const control = makeElement('input', CONTROL_CLASS);
-  control.setAttribute('type', 'checkbox');
-  control.setAttribute('role', 'switch');
-  control.id = `${pin.id}-control`;
-
-  const label = makeElement('label', LABEL_CLASS);
-  label.setAttribute('for', control.id);
-  const labelText = makeTextNode(label);
-
-  const bindings = { root, control, label, labelText };
-
-  control.addEventListener('change', (event) => {
-    // The control's native event is re-issued as the Pin's own below; it stops
-    // here so a Pin listener hears one `change`, with the payload.
-    event.stopPropagation();
-    // Ahead of the render the commit below asks for, so the state the switch
-    // announces is never a frame behind the state it paints.
-    writeAriaChecked(control, control.checked, bindings);
-    pin.setContent('checked', control.checked);
-    pin.transmit(new PinEvent('change', { payload: control.checked, bubbles: true, source: pin }));
-  });
-
-  root.appendChild(control);
-  root.appendChild(label);
-  contentEl.replaceChildren(root);
-
-  return bindings;
-}
-
-/** Mutate after: the label, the native checked property, and its ARIA mirror. */
-function update(pin, contents, bindings) {
-  const label = contents.get('label');
-  setText(bindings.labelText, label);
-  setVisible(bindings.label, Boolean(label));
+/** The label, the native checked property, and its ARIA mirror. */
+function render(bindings, contents) {
+  const { control } = bindings;
+  renderLabel(bindings.label, bindings.labelText, contents.get('label'));
 
   const checked = contents.get('checked') === true;
-  if (bindings.control.checked !== checked) bindings.control.checked = checked;
-  writeAriaChecked(bindings.control, checked, bindings);
+  setFlag(control, 'checked', checked);
+  if (control.getAttribute('aria-checked') !== String(checked)) control.setAttribute('aria-checked', String(checked));
 
-  const disabled = contents.get('disabled') === true;
-  if (bindings.control.disabled !== disabled) bindings.control.disabled = disabled;
+  setFlag(control, 'disabled', contents.get('disabled'));
 }
 
-/** Lazy, memoised registration; see `./button.js` on why it is never at import time. */
-let handle = null;
+const SPEC = Object.freeze({
+  name: NAME,
+  html: `<div class="${ROOT_CLASS}"><input class="${CONTROL_CLASS}" type="checkbox" role="switch">`
+    + `<label class="${LABEL_CLASS}"></label></div>`,
+  keys: ['label', 'checked', 'disabled'],
+  bind,
+  render
+});
 
-/** @returns {{name: string, createTrait: Function}} the component handle */
+/** Define the Toggle widget, once. @returns {object} its type */
 export function registerToggle() {
-  if (!handle) {
-    handle = defineComponent({
-      name: NAME,
-      build,
-      update,
-      chrome: false,
-      allowedKeys: ALLOWED_KEYS
-    });
-  }
-  return handle;
+  injectLibStyles();
+  return widget(SPEC);
 }
 
-/** Create a Toggle Pin on `session`; see `./text.js` on the option order. */
-export function createTogglePin(session, options = {}) {
+/** A chromeless Toggle blit in `parent`; its contents may come flat or as `contents`. */
+export function createToggle(parent, options = {}) {
   registerToggle();
-  return session.createPin({ chrome: false, ...options, type: NAME });
+  return parent.blit(widgetSpec(NAME, { chrome: false, ...options }));
 }

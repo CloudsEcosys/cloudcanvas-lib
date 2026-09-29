@@ -4,6 +4,8 @@
  *
  * Badge: a small tinted chip, optionally dismissible.
  *
+ *   const chip = createBadge(app, { x: 40, y: 40, text: 'beta', tone: 'info', dismissible: true });
+ *
  * {@link toneSurface}, the tone-to-colour decision, is shared with `./alert.js`
  * rather than re-derived there, and exported for exactly that reason. A tone token is a
  * *hue*, and a hue says nothing about whether text can be read on it - printing
@@ -13,7 +15,7 @@
  * backdrop - that is what makes a toned Badge or Alert follow the theme instead of
  * always painting the dark card it was designed on. The foreground still has to
  * be one concrete colour, and one colour cannot read on both a dark and a light
- * composite, so it is computed for the dark card (`primitives.BADGE_SURFACE`) and
+ * composite, so it is computed for the dark card (`BADGE_SURFACE`) and
  * emitted as the *fallback* of a theme-owned override token, exactly as the
  * core's `createBadgeSVG` does. The dismiss button is `./widget.js`'s one
  * convention: a cancellable `dismiss` whose default action removes the widget.
@@ -31,15 +33,14 @@
  * which one it is.
  */
 
+import { leadingText, setAttr, setText, setVisible } from '../../.plugin/addons/widget.js';
 import {
+  BADGE_SURFACE,
+  BADGE_TEXT_OVERRIDE_TOKEN,
   compositeOver,
-  contrastTextFor,
-  primitives,
-  setAttr,
-  setText,
-  setVisible
-} from '../../.plugin/index.js';
-import { defineWidget, leadingText } from './widget.js';
+  contrastTextFor
+} from '../../.plugin/graphics/primitives/primitives.js';
+import { defineWidget } from './widget.js';
 
 const NAME = 'badge';
 const ROOT_CLASS = 'cloudcanvas-lib-badge';
@@ -79,7 +80,7 @@ const NEUTRAL = 'neutral';
  * composites them over the live surface the widget sits on. The foreground is a
  * concrete colour, and one colour cannot read on both a dark and a light
  * composite, so this is the dark answer: the hue composited over the dark card
- * (`primitives.BADGE_SURFACE`), then the readable foreground of *that*. A light
+ * (`BADGE_SURFACE`), then the readable foreground of *that*. A light
  * theme takes it back through the override token in `toneStyle`.
  *
  * @param {string} tone one of `info` / `success` / `warning` / `danger`
@@ -89,7 +90,7 @@ export function toneSurface(tone) {
   const hue = TONE_HUES[tone];
   if (!hue) return null;
 
-  const darkFill = compositeOver(hue, TONE_BG_ALPHA / 255, primitives.BADGE_SURFACE);
+  const darkFill = compositeOver(hue, TONE_BG_ALPHA / 255, BADGE_SURFACE);
   return {
     background: `${hue}${alphaSuffix(TONE_BG_ALPHA)}`,
     border: `${hue}${alphaSuffix(TONE_BORDER_ALPHA)}`,
@@ -107,7 +108,7 @@ function toneStyle(tone) {
   // computed dark-card colour. (Same token and ordering the core badge uses.)
   return `--cc-badge-bg:${surface.background};`
     + `--cc-badge-border:${surface.border};`
-    + `--cc-badge-text:var(${primitives.BADGE_TEXT_OVERRIDE_TOKEN}, ${surface.text});`;
+    + `--cc-badge-text:var(${BADGE_TEXT_OVERRIDE_TOKEN}, ${surface.text});`;
 }
 
 function bind(host, on, dismiss) {
@@ -135,11 +136,8 @@ const widget = /* @__PURE__ */ defineWidget({
   render
 });
 
-/** Register the Badge Pin component once; a second call returns the same handle. */
-export const registerBadge = widget.register;
+/** Define the Badge widget, once. @returns {object} its type */
+export const registerBadge = widget.define;
 
-/** Create a Badge Pin on `session`; see `./text.js` on the option order. */
-export const createBadgePin = widget.create;
-
-/** The core `badge` type: `root.blit({ type: 'badge', badge: { text, tone, dismissible } })`. */
-export const badgeType = widget.define;
+/** A chromeless Badge blit in `parent`: `createBadge(app, { x, y, text, tone, dismissible })`. */
+export const createBadge = widget.create;

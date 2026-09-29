@@ -2,135 +2,102 @@
  * CloudCanvas - NeoTec, LLC, Richard Christopher
  * Written by Richard Christopher, Copyright 2026 NeoTec, LLC
  *
- * Select: a real `<select>` whose `<option>` list is reconciled, not rebuilt.
+ * Select: a real `<select>` whose `<option>` list is reconciled, not rebuilt, as a widget.
  *
- * The options are the one genuinely list-shaped thing in this half of the kit,
- * so they go through `reconcileKeyedList` keyed on `option.value`: the element
- * already holding a key is reused, a new key gets one element, and what is left
- * over is removed. Rewriting the list wholesale would be worse than wasteful -
- * it would drop the element the user has open and reset the selection on every
- * unrelated content change.
+ *   registerSelect();
+ *   const fruit = createSelect(app, { label: 'Fruit', options: [{ value: 'a', label: 'Apple' }] });
  *
- * Keying on the value has a second consequence worth stating: an option's value
- * *is* its identity, so it never changes for a given element and is written at
- * creation. Only the label can move, and it moves through `setText`.
+ * The options are the one list-shaped thing in the forms, so they go through
+ * `reconcileKeyedList` (`cloudcanvas/keyed-list`) keyed on `option.value`: the
+ * element already holding a key is reused, a new key gets one element, and what
+ * is left over is removed. Rewriting the list wholesale would drop the element
+ * the user has open and reset the selection on every unrelated write.
+ *
+ * Keying on the value has a second consequence: an option's value *is* its
+ * identity, so it is written at creation and never again. Only the label moves,
+ * through `setText`.
  *
  * The selected value is written after the reconcile, never before: a `<select>`
  * silently refuses a value none of its options carry.
  */
-
-import {
-  defineComponent,
-  makeElement,
-  makeTextNode,
-  reconcileKeyedList,
-  setText,
-  setVisible,
-  PinEvent
-} from '../../.plugin/index.js';
+import { blit } from '../../.plugin/core/index.js';
+import { reconcileKeyedList } from '../../.plugin/addons/keyed-list.js';
+import { leadingText, setText, widget, widgetSpec } from '../../.plugin/addons/widget.js';
 import { asText } from '../coerce.js';
+import { injectLibStyles } from '../styles.js';
+import { commitOn, linkLabel, renderLabel, setFlag } from './control.js';
 
-/** Registry name, and the `type` a caller creates a Pin by. */
-const NAME = 'select';
+/**
+ * The type name: `dropdown`, since `select` names the selection trait a widget's
+ * own trait key would collide with. A save that says `select` loads as this.
+ */
+const NAME = 'dropdown';
 
 const ROOT_CLASS = 'cloudcanvas-lib-select';
 const LABEL_CLASS = 'cloudcanvas-lib-select-label';
 const CONTROL_CLASS = 'cloudcanvas-lib-select-control';
 
-/** The content keys a Select accepts; anything else is refused by `setContents`. */
-const ALLOWED_KEYS = ['label', 'value', 'options', 'disabled'];
-
-/** An option's key, which is also the value the element will carry for good. */
+/** An option's key, which is also the value the element carries for good. */
 function optionKey(option) {
   return asText(option && option.value);
 }
 
-/** One `<option>`, with its value fixed at creation and a text node for its label. */
+/** One `<option>`, its value fixed at creation, with a Text node for its label. */
 function createOption(option) {
-  const element = makeElement('option');
+  const element = document.createElement('option');
   element.value = optionKey(option);
-  makeTextNode(element);
+  leadingText(element);
   return element;
 }
 
-/**
- * Build once: the label, the control, and the change listener.
- *
- * The control's native `input` / `change` stop at the control and are re-issued
- * as the Pin's own event, the way a custom element encapsulates its inner events.
- */
-function build(pin, contentEl) {
-  const root = makeElement('div', ROOT_CLASS);
-
-  const label = makeElement('label', LABEL_CLASS);
-  const labelText = makeTextNode(label);
-
-  const control = makeElement('select', CONTROL_CLASS);
-  control.id = `${pin.id}-control`;
-  label.setAttribute('for', control.id);
-
-  control.addEventListener('change', (event) => {
-    // The control's native event is re-issued as the Pin's own below; it stops
-    // here so a Pin listener hears one `change`, with the payload.
-    event.stopPropagation();
-    pin.setContent('value', control.value);
-    pin.transmit(new PinEvent('change', { payload: control.value, bubbles: true, source: pin }));
-  });
-
-  root.appendChild(label);
-  root.appendChild(control);
-  contentEl.replaceChildren(root);
-
-  return { root, label, labelText, control };
+/** The label and the control, named from the blit's element id; the change commits and is re-issued. */
+function bind(host, on) {
+  const root = host.querySelector(`.${ROOT_CLASS}`);
+  const label = root.querySelector(`.${LABEL_CLASS}`);
+  const control = root.querySelector(`.${CONTROL_CLASS}`);
+  linkLabel(host, control, label);
+  commitOn(on, blit(host), control, 'change', 'value', (element) => element.value);
+  return { root, label, labelText: leadingText(label), control };
 }
 
-/** Mutate after: the label, the option list, then the selection it must hold. */
-function update(pin, contents, bindings) {
+/** The label, the option list, then the selection it must hold. */
+function render(bindings, contents) {
   const { control } = bindings;
-
-  const label = contents.get('label');
-  setText(bindings.labelText, label);
-  setVisible(bindings.label, Boolean(label));
+  renderLabel(bindings.label, bindings.labelText, contents.get('label'));
 
   const options = contents.get('options');
   reconcileKeyedList(control, Array.isArray(options) ? options : [], {
     key: optionKey,
     create: createOption,
-    update: (element, option) => setText(element.firstChild, option && option.label)
+    update: (element, option) => setText(leadingText(element), option && option.label)
   });
 
-  // After the reconcile: a `<select>` cannot hold a value no option carries.
-  // Only when the caller stated one - writing an absent value as the empty
-  // string would deselect the first option the platform selects by default,
-  // leaving a blank field nobody asked for.
+  // After the reconcile, and only when stated: writing an absent value as the
+  // empty string would deselect the option the platform selects by default.
   if (contents.has('value')) {
     const value = asText(contents.get('value'));
     if (control.value !== value) control.value = value;
   }
-
-  const disabled = contents.get('disabled') === true;
-  if (control.disabled !== disabled) control.disabled = disabled;
+  setFlag(control, 'disabled', contents.get('disabled'));
 }
 
-/** Lazy, memoised registration; see `./button.js` on why it is never at import time. */
-let handle = null;
+const SPEC = Object.freeze({
+  name: NAME,
+  html: `<div class="${ROOT_CLASS}"><label class="${LABEL_CLASS}"></label>`
+    + `<select class="${CONTROL_CLASS}"></select></div>`,
+  keys: ['label', 'value', 'options', 'disabled'],
+  bind,
+  render
+});
 
-/** @returns {{name: string, createTrait: Function}} the component handle */
+/** Define the Select widget, once. @returns {object} its type */
 export function registerSelect() {
-  if (!handle) {
-    handle = defineComponent({
-      name: NAME,
-      build,
-      update,
-      chrome: false,
-      allowedKeys: ALLOWED_KEYS
-    });
-  }
-  return handle;
+  injectLibStyles();
+  return widget(SPEC);
 }
 
-/** Create a Select Pin on `session`; see `./text.js` on the option order. */
-export function createSelectPin(session, options = {}) {
+/** A chromeless Select blit in `parent`; its contents may come flat or as `contents`. */
+export function createSelect(parent, options = {}) {
   registerSelect();
-  return session.createPin({ chrome: false, ...options, type: NAME });
+  return parent.blit(widgetSpec(NAME, { chrome: false, ...options }));
 }

@@ -5,31 +5,24 @@
  * CalendarEvent: a scheduled item or an incident, with a severity, a status
  * and two actions.
  *
- * Severity is published as `data-severity` on the card and on its chip, and
- * the sheet decides what each one looks like through the `--cc-severity-*`
- * tokens - no inline background, so a theme can restate every severity in
- * one place. Acknowledging and resolving are real buttons; both also speak
- * through the session's live region, because a change of state a sighted
- * user sees as a colour is a change a screen reader has to be told about.
+ *   registerCalendarEvent();
+ *   const incident = createCalendarEvent(app, { title: 'DB spike', severity: 'critical', status: 'active' });
+ *   acknowledgeCalendarEvent(incident);       // critical steps down to high; alert:acknowledged
+ *
+ * Severity is published as `data-severity` on the card and on its chip, and the
+ * sheet decides what each one looks like through the `--cc-severity-*` tokens -
+ * no inline background, so a theme can restate every severity in one place.
+ * Acknowledging and resolving are real buttons; both also emit `announce` (the
+ * announce add-on speaks it through the root's live region), because a change
+ * of state a sighted user sees as a colour is one a screen reader must be told.
  */
-
-import {
-  PinEvent,
-  announce,
-  makeElement,
-  makeTextNode,
-  setAttr,
-  setText
-} from '../../.plugin/index.js';
-import {
-  claimHost,
-  createComponentPin,
-  makeRegistrar,
-  splitOptions
-} from './registrar.js';
+import { blit } from '../../.plugin/core/index.js';
+import { contentOf, leadingText, setAttr, setContents, setText, widget, widgetSpec } from '../../.plugin/addons/widget.js';
 import { asText } from '../coerce.js';
+import { withDefaults } from './registrar.js';
+import { injectComponentStyles } from './styles.js';
 
-/** Registry name, and the `type` a caller creates a Pin by. */
+/** The type name. */
 export const CALENDAR_EVENT_TYPE = 'calendar-event';
 
 /** Every class this widget emits. Styled by `COMPONENT_DEFAULT_CSS`. */
@@ -48,12 +41,11 @@ export const EVENT_CLS = /* @__PURE__ */ Object.freeze({
 /** The severities the sheet has a colour for, most urgent first. */
 export const EVENT_SEVERITIES = /* @__PURE__ */ Object.freeze(['critical', 'high', 'normal', 'info']);
 
-/** The events the actions transmit, bubbling up the scope chain. */
+/** The events the actions emit. */
 export const ACKNOWLEDGED_EVENT = 'alert:acknowledged';
 export const RESOLVED_EVENT = 'alert:resolved';
 
 const DEFAULT_SEVERITY = 'normal';
-const ALLOWED_KEYS = ['title', 'time', 'severity', 'status'];
 
 /** The declared severity, or the default for anything that is not one. */
 function severityOf(value) {
@@ -62,73 +54,53 @@ function severityOf(value) {
 
 /* ------------------ BEHAVIOUR ------------------ */
 
-/** Acknowledge: a critical event steps down to high, and the status says so. */
-export function acknowledgeCalendarEvent(pin) {
-  pin.setContent('status', 'acknowledged');
-  if (pin.contents.get('severity') === 'critical') pin.setContent('severity', 'high');
+/** Write `patch`, then say what happened: `announce` for the live region, and `type` for listeners. */
+function transition(b, patch, verb, type) {
+  setContents(b, patch);
+  const title = asText(contentOf(b).title);
+  b.emit('announce', `${title} ${verb}`);
+  b.emit(type, { eventId: b.el.id, title });
+}
 
-  const title = asText(pin.contents.get('title'));
-  announce(pin.session, `${title} acknowledged`);
-  pin.transmit(new PinEvent(ACKNOWLEDGED_EVENT, {
-    payload: { eventId: pin.id, title },
-    bubbles: true,
-    source: pin
-  }));
+/** Acknowledge: a critical event steps down to high, and the status says so. */
+export function acknowledgeCalendarEvent(b) {
+  const critical = contentOf(b).severity === 'critical';
+  transition(b, critical ? { status: 'acknowledged', severity: 'high' } : { status: 'acknowledged' }, 'acknowledged', ACKNOWLEDGED_EVENT);
 }
 
 /** Resolve: the event becomes informational, and the status says so. */
-export function resolveCalendarEvent(pin) {
-  pin.setContent('status', 'resolved');
-  pin.setContent('severity', 'info');
-
-  const title = asText(pin.contents.get('title'));
-  announce(pin.session, `${title} resolved`);
-  pin.transmit(new PinEvent(RESOLVED_EVENT, {
-    payload: { eventId: pin.id, title },
-    bubbles: true,
-    source: pin
-  }));
+export function resolveCalendarEvent(b) {
+  transition(b, { status: 'resolved', severity: 'info' }, 'resolved', RESOLVED_EVENT);
 }
 
 /* ------------------ TEMPLATE ------------------ */
 
-/** One action: a real button with its label and its handler. */
-function makeAction(className, label, onClick) {
-  const button = makeElement('button', `cloudcanvas-component-btn ${EVENT_CLS.BUTTON} ${className}`);
-  button.setAttribute('type', 'button');
-  button.appendChild(document.createTextNode(label));
-  button.addEventListener('click', onClick);
-  return button;
+/** One action: a real button with its label. */
+function actionHtml(className, label) {
+  return `<button class="cloudcanvas-component-btn ${EVENT_CLS.BUTTON} ${className}" type="button">${label}</button>`;
 }
 
-function build(pin, contentEl) {
-  claimHost(contentEl);
-  const card = makeElement('div', `cloudcanvas-component cloudcanvas-component-card ${EVENT_CLS.ROOT}`);
+const HTML = `<div class="cloudcanvas-component cloudcanvas-component-card ${EVENT_CLS.ROOT}">`
+  + `<div class="${EVENT_CLS.HEADER}"><div class="${EVENT_CLS.TITLE}"></div>`
+  + `<span class="cloudcanvas-component-chip ${EVENT_CLS.BADGE}"></span></div>`
+  + `<div class="${EVENT_CLS.TIME}"></div>`
+  + `<div class="${EVENT_CLS.ACTIONS}">${actionHtml(EVENT_CLS.ACK, 'Ack')}${actionHtml(EVENT_CLS.RESOLVE, 'Resolve')}</div></div>`;
 
-  const header = makeElement('div', EVENT_CLS.HEADER);
-  const title = makeElement('div', EVENT_CLS.TITLE);
-  const titleText = makeTextNode(title);
-  const badge = makeElement('span', `cloudcanvas-component-chip ${EVENT_CLS.BADGE}`);
-  const badgeText = makeTextNode(badge);
-  header.append(title, badge);
-
-  const time = makeElement('div', EVENT_CLS.TIME);
-  const timeText = makeTextNode(time);
-
-  const actions = makeElement('div', EVENT_CLS.ACTIONS);
-  const ack = makeAction(EVENT_CLS.ACK, 'Ack', () => acknowledgeCalendarEvent(pin));
-  const resolve = makeAction(EVENT_CLS.RESOLVE, 'Resolve', () => resolveCalendarEvent(pin));
-  actions.append(ack, resolve);
-
-  card.append(header, time, actions);
-  contentEl.replaceChildren(card);
-
-  return { card, titleText, badge, badgeText, timeText, ack, resolve };
+/** The nodes, and the two actions. */
+function bind(host, on) {
+  const b = blit(host);
+  const find = (className) => host.querySelector(`.${className}`);
+  on(find(EVENT_CLS.ACK), 'click', () => acknowledgeCalendarEvent(b));
+  on(find(EVENT_CLS.RESOLVE), 'click', () => resolveCalendarEvent(b));
+  const badge = find(EVENT_CLS.BADGE);
+  return {
+    card: find(EVENT_CLS.ROOT), titleText: leadingText(find(EVENT_CLS.TITLE)), badge, badgeText: leadingText(badge),
+    timeText: leadingText(find(EVENT_CLS.TIME))
+  };
 }
 
-function update(pin, contents, bindings, cache) {
+function render(bindings, contents, cache) {
   const severity = severityOf(contents.get('severity'));
-
   setText(bindings.titleText, contents.get('title'));
   setText(bindings.timeText, contents.get('time'));
   setText(bindings.badgeText, contents.get('status'));
@@ -138,30 +110,19 @@ function update(pin, contents, bindings, cache) {
 
 /* ------------------ REGISTRATION ------------------ */
 
-/** Register the calendar event, once per registry; see `./registrar.js`. */
-export const registerCalendarEvent = /* @__PURE__ */ makeRegistrar({
-  name: CALENDAR_EVENT_TYPE,
-  build,
-  update,
-  chrome: false,
-  allowedKeys: ALLOWED_KEYS
-});
+const SPEC = Object.freeze({ name: CALENDAR_EVENT_TYPE, html: HTML, keys: ['title', 'time', 'severity', 'status'], bind, render });
 
-/**
- * Create a calendar event Pin.
- *
- * @param {CloudCanvasSession} session
- * @param {object} [options] `title`, `time`, `severity`, `status` become
- *   contents; the rest are Pin options
- * @returns {Pin}
- */
-export function createCalendarEventPin(session, options = {}) {
-  const { pinOptions, contents } = splitOptions(options, [
-    ['title', 'Event / Alert'],
-    ['time', '10:00 - 11:00 AM'],
-    ['severity', DEFAULT_SEVERITY],
-    ['status', 'scheduled']
-  ], { x: 20, y: 80, width: 210, height: 105 });
+/** Define the calendar event widget, once. @returns {object} its type */
+export function registerCalendarEvent() {
+  injectComponentStyles();
+  return widget(SPEC);
+}
 
-  return createComponentPin(session, registerCalendarEvent, pinOptions, contents, false);
+/** A calendar event in `parent`. `title`, `time`, `severity` and `status` are contents; the rest is spec. */
+export function createCalendarEvent(parent, options = {}) {
+  registerCalendarEvent();
+  return parent.blit(widgetSpec(CALENDAR_EVENT_TYPE, withDefaults({
+    x: 20, y: 80, w: 210, h: 105, chrome: false,
+    title: 'Event / Alert', time: '10:00 - 11:00 AM', severity: DEFAULT_SEVERITY, status: 'scheduled'
+  }, options)));
 }

@@ -4,6 +4,9 @@
  *
  * Progress: a determinate bar.
  *
+ *   const bar = createProgress(app, { x: 40, y: 40, value: 40, label: 'Upload' });
+ *   setContent(bar, 'value', 80);
+ *
  * A real `<progress value max>`, not a pair of divs with hand-written ARIA. The
  * native element already has the `progressbar` role and already computes
  * `aria-valuenow` / `aria-valuemin` / `aria-valuemax` from the two attributes
@@ -19,9 +22,9 @@
  * because a fully tinted bar gives no reference for how full it is.
  */
 
-import { setAttr, setText, setVisible } from '../../.plugin/index.js';
+import { leadingText, setAttr, setText, setVisible } from '../../.plugin/addons/widget.js';
 import { toNumber } from '../coerce.js';
-import { defineWidget, leadingText } from './widget.js';
+import { defineWidget } from './widget.js';
 
 const NAME = 'progress';
 const ROW_CLASS = 'cloudcanvas-lib-progress-row';
@@ -69,11 +72,8 @@ const widget = /* @__PURE__ */ defineWidget({
   render
 });
 
-/** Register the Progress Pin component once; a second call returns the same handle. */
-export const registerProgress = widget.register;
+/** Define the Progress widget, once. @returns {object} its type */
+export const registerProgress = widget.define;
 
-/** Create a Progress Pin on `session`; see `./text.js` on the option order. */
-export const createProgressPin = widget.create;
-
-/** The core `progress` type: `root.blit({ type: 'progress', progress: { value, max, label, tone } })`. */
-export const progressType = widget.define;
+/** A chromeless Progress blit in `parent`: `createProgress(app, { x, y, value, max, label, tone })`. */
+export const createProgress = widget.create;

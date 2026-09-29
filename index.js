@@ -5,23 +5,20 @@
  * The UI kit's single door (`cloudcanvas/lib`): the forms group
  * (`./forms/index.js`, `cloudcanvas/forms`), the display group
  * (`./display/index.js`, `cloudcanvas/display`), the kit stylesheet, and the one
- * call that registers the whole set. Import a group directly to pay for one.
+ * call that defines the whole set. Import a group directly to pay for one.
  *
- * REGISTRATION IS EXPLICIT. Importing this module must not touch the trait
- * registry, and does not: every widget's `register<Name>()` is lazy and
- * memoised, and nothing here runs at import time. The alternative - a top-level
- * `registerDefaults` call - makes the mere act of importing a barrel mutate
- * shared global state, so a consumer who wanted one widget silently gets fifteen
- * definitions, and a test that imports the barrel inherits them too. Two ways in instead:
+ * REGISTRATION IS EXPLICIT. Importing this module defines no type and names no
+ * trait: every widget's `register<Name>()` is a call, idempotent, and nothing here
+ * runs at import time. A top-level definition would make the mere act of
+ * importing a barrel change shared global state, so a consumer who wanted one
+ * widget would silently get fifteen, and so would every test that imports it.
+ * Two ways in instead:
  *
- *   - `registerBaseTypes()` registers the whole kit, when you want it, once.
- *   - any `create<Name>Pin()` registers just its own component on first call,
- *     which is what makes the quick-start snippet a single import.
+ *   - `registerBaseTypes()` defines the whole kit, when you want it, once.
+ *   - any `create<Name>(parent, options)` defines just its own widget on first
+ *     call, which is what makes the quick-start snippet a single import.
  *
- * Both are idempotent. `defineComponent` refuses a name that is already taken -
- * a registry that silently replaced a definition would make two components
- * behind one name invisible - so re-registration returns the first handle rather
- * than throwing.
+ * Both are idempotent: `widget()` treats the same definition again as a no-op.
  */
 
 export * from './forms/index.js';
@@ -38,17 +35,10 @@ import { registerForms } from './forms/index.js';
 import { registerDisplay } from './display/index.js';
 
 /**
- * Register every widget in the kit: the forms, then the display widgets.
- *
- * The explicit, no-side-effects-on-import path: nothing in this module runs
- * until this is called (or until a `create<Name>Pin` factory registers its own
- * component). Safe to call more than once - each registrar memoises its handle -
- * and safe to call before a session exists, since a definition is data.
- *
- * @param {TraitRegistry} [registry] reaches the list, whose definition is per
- *   registry; every other widget registers on the shared singleton
- * @returns {object[]} the component handles, in registration order
+ * Define every widget in the kit: the forms, then the display widgets. Safe to
+ * call more than once, and before any root exists, since a definition is data.
+ * @returns {string[]} the type names, in registration order
  */
-export function registerBaseTypes(registry) {
-  return [...registerForms(), ...registerDisplay(registry)];
+export function registerBaseTypes() {
+  return [...registerForms(), ...registerDisplay()];
 }

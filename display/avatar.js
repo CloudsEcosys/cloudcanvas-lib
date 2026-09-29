@@ -4,7 +4,9 @@
  *
  * Avatar: a person, as an image or as their initials.
  *
- * The `src` is validated through `primitives.safeUrl` before it ever reaches the
+ *   const ada = createAvatar(app, { x: 40, y: 40, name: 'Ada Lovelace', src: 'https://example.test/ada.png' });
+ *
+ * The `src` is validated through `safeUrl` (`cloudcanvas/primitives`) before it ever reaches the
  * attribute. `setAttribute` stops markup injection but not navigation-time
  * execution - `javascript:` and `data:text/html` both run script out of an
  * otherwise inert `src` - and an avatar URL is the most caller-supplied string
@@ -20,8 +22,9 @@
  * own alt when the image *is* showing.
  */
 
-import { primitives, setAttr, setText, setVisible } from '../../.plugin/index.js';
-import { defineWidget, leadingText } from './widget.js';
+import { leadingText, setAttr, setText, setVisible } from '../../.plugin/addons/widget.js';
+import { safeUrl } from '../../.plugin/graphics/primitives/primitives.js';
+import { defineWidget } from './widget.js';
 
 const NAME = 'avatar';
 const ROOT_CLASS = 'cloudcanvas-lib-avatar';
@@ -53,7 +56,7 @@ function render(bindings, contents, cache) {
   const label = name === undefined || name === null ? '' : String(name);
   // `safeUrl` answers with the fallback - here, the empty string - for anything
   // it will not vouch for, so "unsafe" and "absent" collapse into one branch.
-  const url = primitives.safeUrl(contents.get('src'), '');
+  const url = safeUrl(contents.get('src'), '');
   const showImage = url !== '';
   const size = contents.get('size');
 
@@ -82,11 +85,8 @@ const widget = /* @__PURE__ */ defineWidget({
   render
 });
 
-/** Register the Avatar Pin component once; a second call returns the same handle. */
-export const registerAvatar = widget.register;
+/** Define the Avatar widget, once. @returns {object} its type */
+export const registerAvatar = widget.define;
 
-/** Create an Avatar Pin on `session`; see `./text.js` on the option order. */
-export const createAvatarPin = widget.create;
-
-/** The core `avatar` type: `root.blit({ type: 'avatar', avatar: { name, src, size } })`. */
-export const avatarType = widget.define;
+/** A chromeless Avatar blit in `parent`: `createAvatar(app, { x, y, name, src, size })`. */
+export const createAvatar = widget.create;

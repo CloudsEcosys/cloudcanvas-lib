@@ -3,56 +3,41 @@
  * Written by Richard Christopher, Copyright 2026 NeoTec, LLC
  *
  * The display group (`cloudcanvas/display`): text, badge, avatar, divider,
- * progress, spinner, alert and the keyed list.
+ * progress, spinner, alert and the keyed list - each a widget (`./widget.js`):
+ * one template, one render, contents under the trait of its type's name.
  *
- * Five are core types as well as Pins - `badge`, `avatar`, `progress`,
- * `spinner`, `alert` - built from one template and one render (`./widget.js`),
- * so a core root places them with no Pin at all:
+ *   registerDisplay();
+ *   app.blit({ type: 'alert', alert: { title: 'Saved', message: 'All good', tone: 'success' } });
+ *   createBadge(app, { x: 40, y: 40, text: 'beta', tone: 'info' });
  *
- *   displayTypes();
- *   root.blit({ type: 'alert', alert: { title: 'Saved', message: 'All good', tone: 'success' } });
- *
- * The other three stay on the Pin shell: `text` and `divider` choose their
- * element from their contents at build time, and `list` reads the Pin's live
- * contents when a row is activated and transmits a `PinEvent`.
- *
- * Registration is explicit: nothing here runs on import. `registerDisplay()`
- * registers the Pin components, `displayTypes()` the core types.
+ * Registration is explicit: nothing here runs on import. Each `create<Name>`
+ * defines its own widget on first call; `registerDisplay()` defines the set.
  */
-import { alertType, registerAlert } from './alert.js';
-import { avatarType, registerAvatar } from './avatar.js';
-import { badgeType, registerBadge } from './badge.js';
+import { registerAlert } from './alert.js';
+import { registerAvatar } from './avatar.js';
+import { registerBadge } from './badge.js';
 import { registerDivider } from './divider.js';
 import { registerList } from './list.js';
-import { progressType, registerProgress } from './progress.js';
-import { registerSpinner, spinnerType } from './spinner.js';
+import { registerProgress } from './progress.js';
+import { registerSpinner } from './spinner.js';
 import { registerText } from './text.js';
 
-export { registerText, createTextPin } from './text.js';
-export { registerBadge, createBadgePin, badgeType } from './badge.js';
-export { registerAvatar, createAvatarPin, avatarType } from './avatar.js';
-export { registerDivider, createDividerPin } from './divider.js';
-export { registerProgress, createProgressPin, progressType } from './progress.js';
-export { registerSpinner, createSpinnerPin, spinnerType } from './spinner.js';
-export { registerAlert, createAlertPin, alertType } from './alert.js';
-export { registerList, createListPin } from './list.js';
+export { registerText, createText } from './text.js';
+export { registerBadge, createBadge } from './badge.js';
+export { registerAvatar, createAvatar } from './avatar.js';
+export { registerDivider, createDivider } from './divider.js';
+export { registerProgress, createProgress } from './progress.js';
+export { registerSpinner, createSpinner } from './spinner.js';
+export { registerAlert, createAlert } from './alert.js';
+export { registerList, createList } from './list.js';
 
 /**
- * Register every display Pin component, once each; `registry` reaches the list,
- * the one component whose registration is per registry.
- * @returns {object[]} the component handles, in export order
+ * Define every display widget, once each; a second call defines nothing new.
+ * @returns {string[]} the type names, in export order
  */
-export function registerDisplay(registry) {
+export function registerDisplay() {
   return [
     registerText(), registerBadge(), registerAvatar(), registerDivider(),
-    registerProgress(), registerSpinner(), registerAlert(), registerList(registry)
-  ];
-}
-
-/**
- * Register the five core display types and their traits, once each.
- * @returns {object[]} the types' potential blits: badge, avatar, progress, spinner, alert
- */
-export function displayTypes() {
-  return [badgeType(), avatarType(), progressType(), spinnerType(), alertType()];
+    registerProgress(), registerSpinner(), registerAlert(), registerList()
+  ].map((defined) => defined.el.getAttribute('data-type'));
 }

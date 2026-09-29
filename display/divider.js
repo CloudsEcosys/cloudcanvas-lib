@@ -2,68 +2,52 @@
  * CloudCanvas - NeoTec, LLC, Richard Christopher
  * Written by Richard Christopher, Copyright 2026 NeoTec, LLC
  *
- * Divider: a rule between things.
+ * Divider: a rule between things, as a widget.
+ *
+ *   const rule = createDivider(app, { x: 0, y: 120, orientation: 'vertical' });
  *
  * A horizontal divider is an `<hr>`, which already *is* a separator to every
  * assistive technology - no role, no label, nothing to keep in sync. A vertical
  * one cannot be: `<hr>` has no vertical meaning, so that case is a plain `<div>`
- * declaring `role="separator"` itself. The element is chosen at build time
- * because the element is what it means, but `aria-orientation` and the modifier
- * class are written on every pass so a Pin whose orientation is flipped after
- * the fact still reports the truth (an `<hr>` may carry `aria-orientation`; a
- * `<div>` without the role may not, which is why the role is the build-time half).
+ * declaring `role="separator"` itself. The element is what it means, so the
+ * render swaps it only when the orientation moves (`elementAs`); the modifier
+ * class and `aria-orientation` are written on every render so the element
+ * always reports the truth.
  *
  * Nothing else is written: a divider has no text, no controls and no state.
  */
+import { defineWidget, elementAs } from './widget.js';
 
-import { defineComponent, makeElement, setAttr } from '../../.plugin/index.js';
-
-const NAME = 'divider';
 const ROOT_CLASS = 'cloudcanvas-lib-divider';
 
 const VERTICAL = 'vertical';
 const HORIZONTAL = 'horizontal';
 
-const ALLOWED_KEYS = ['orientation'];
-
-/** The declared orientation, or the default. */
-function orientationOf(contents) {
-  return contents.get('orientation') === VERTICAL ? VERTICAL : HORIZONTAL;
+function bind(host) {
+  return { root: host.querySelector(`.${ROOT_CLASS}`) };
 }
 
-function build(pin, contentEl) {
-  const vertical = orientationOf(pin.contents) === VERTICAL;
-  const root = makeElement(vertical ? 'div' : 'hr', ROOT_CLASS);
-  if (vertical) root.setAttribute('role', 'separator');
+/** The element the orientation names, then its role, class and `aria-orientation`. */
+function render(bindings, contents) {
+  const vertical = contents.get('orientation') === VERTICAL;
+  const root = elementAs(bindings.root, vertical ? 'div' : 'hr');
+  if (vertical && root.getAttribute('role') !== 'separator') root.setAttribute('role', 'separator');
+  root.classList.toggle(`${ROOT_CLASS}-${VERTICAL}`, vertical);
 
-  contentEl.replaceChildren(root);
-  return { root };
+  const orientation = vertical ? VERTICAL : HORIZONTAL;
+  if (root.getAttribute('aria-orientation') !== orientation) root.setAttribute('aria-orientation', orientation);
 }
 
-function update(pin, contents, bindings, cache) {
-  const orientation = orientationOf(contents);
-  bindings.root.classList.toggle(`${ROOT_CLASS}-${VERTICAL}`, orientation === VERTICAL);
-  setAttr(bindings.root, 'aria-orientation', orientation, cache, 'ariaOrientation');
-}
+const widget = /* @__PURE__ */ defineWidget({
+  name: 'divider',
+  html: `<hr class="${ROOT_CLASS}">`,
+  allowedKeys: ['orientation'],
+  bind,
+  render
+});
 
-let handle = null;
+/** Define the Divider widget, once. @returns {object} its type */
+export const registerDivider = widget.define;
 
-/** Register the Divider display type once; a second call returns the same handle. */
-export function registerDivider() {
-  if (!handle) {
-    handle = defineComponent({
-      name: NAME,
-      build,
-      update,
-      chrome: false,
-      allowedKeys: ALLOWED_KEYS
-    });
-  }
-  return handle;
-}
-
-/** Create a Divider Pin on `session`; see `./text.js` on the option order. */
-export function createDividerPin(session, options = {}) {
-  registerDivider();
-  return session.createPin({ chrome: false, ...options, type: NAME });
-}
+/** A chromeless Divider blit in `parent`: `createDivider(app, { x, y, orientation })`. */
+export const createDivider = widget.create;

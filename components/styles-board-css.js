@@ -228,6 +228,12 @@ export const COMPONENTS_BOARD_CSS = `
   object-fit: cover;
 }
 
+/* The render toggles image and placeholder with the hidden attribute; the block display above must not undo it. */
+.cloudcanvas-media-img[hidden],
+.cloudcanvas-media-placeholder[hidden] {
+  display: none;
+}
+
 .cloudcanvas-media-content {
   display: flex;
   flex-direction: column;

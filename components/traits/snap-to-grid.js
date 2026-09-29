@@ -2,107 +2,81 @@
  * CloudCanvas - NeoTec, LLC, Richard Christopher
  * Written by Richard Christopher, Copyright 2026 NeoTec, LLC
  *
- * SnapToGridTrait: rounds a Pin's box to a grid when a gesture ends.
+ * snapToGrid: rounds a blit's box to a grid when a gesture ends. A function
+ * trait, named by `registerComponents()`:
  *
- * It rides the `drag:end` and `resize:end` signals the interaction traits emit
- * rather than its own `onPointerUp`: traits receive pointer hooks in attachment
- * order, and the default drag/resize traits - attached first - have already
- * cleared their live flags by the time a later trait's hook runs, so a check of
- * those flags never saw a real gesture. Each signal carries its resting box and
- * a `cancelled` flag; a gesture the platform took away is not snapped.
+ *   blit.use({ snapToGrid });
+ *   card.set({ drag: true, resize: true, snapToGrid: { gridSize: 20 } });
  *
- * `enabled` is the runtime toggle. On (the default), a finished drag snaps the
- * Pin's position and a finished resize snaps its whole box to the grid; off, the
- * gesture is left exactly where the pointer put it - free-form. The flag is a
- * plain field, so a host can flip it live (`trait.enabled = false`) without
- * detaching the trait and losing its handles.
+ * It rides the `drag:end` and `resize:end` signals the drag and resize add-ons
+ * emit on the blit, so it needs no pointer handling of its own. A finished drag
+ * snaps the position; a finished resize snaps the whole box, its size floored
+ * at one cell. A gesture the platform took away (`payload.cancelled`) is left
+ * where it was, and so is a nested blit's gesture bubbling through.
+ *
+ * `enabled: false` keeps the grid configured but leaves gestures free-form;
+ * writing the key again (`card.set({ snapToGrid: { gridSize: 20 } })`) turns it
+ * back on, and `snapToGrid: false` removes it.
  */
 
-import { PinTrait, resizePin } from '../../../.plugin/index.js';
-
-/** The signals the trait listens for; see `PIN_SIGNAL_TYPES` in the core. */
+/** The signals the trait listens for. */
 const DRAG_END_SIGNAL = 'drag:end';
 const RESIZE_END_SIGNAL = 'resize:end';
 
 const DEFAULT_GRID = 24;
 
-export class SnapToGridTrait extends PinTrait {
-  constructor(options = {}) {
-    super(options, {
-      name: 'snap-to-grid',
-      capabilities: ['interactive', 'spatial-constraint']
-    });
-    this.gridSize = Number(options.gridSize) > 0 ? Number(options.gridSize) : DEFAULT_GRID;
-    this.enabled = options.enabled !== false;
-    this._listeners = new WeakMap();
-  }
+/** Round `value` to the nearest multiple of `gridSize`. */
+function round(value, gridSize) {
+  return Math.round(value / gridSize) * gridSize;
+}
 
-  onAttach(pin) {
-    if (!pin || typeof pin.addEventListener !== 'function') return;
-    const listener = (event) => this._onGestureEnd(pin, event);
-    this._listeners.set(pin, listener);
-    pin.addEventListener(DRAG_END_SIGNAL, listener);
-    pin.addEventListener(RESIZE_END_SIGNAL, listener);
-  }
+/**
+ * Round the blit's position to the grid, writing only when it moves.
+ * @returns {{x: number, y: number}} the snapped position
+ */
+export function snapPosition(b, gridSize = DEFAULT_GRID) {
+  const x = round(b.x, gridSize);
+  const y = round(b.y, gridSize);
+  if (x !== b.x || y !== b.y) b.set({ x, y });
+  return { x, y };
+}
 
-  onDetach(pin) {
-    const listener = this._listeners.get(pin);
-    if (listener && typeof pin.removeEventListener === 'function') {
-      pin.removeEventListener(DRAG_END_SIGNAL, listener);
-      pin.removeEventListener(RESIZE_END_SIGNAL, listener);
-    }
-    this._listeners.delete(pin);
-  }
+/**
+ * Round the blit's whole box to the grid: its size, floored at one cell so a box
+ * never snaps away to nothing, then its origin, so the box stays aligned however
+ * a near-edge handle moved it. `size` is the box the resize came to rest at
+ * (its `resize:end` payload); the blit's own size in force by default.
+ * @returns {{x: number, y: number, width: number, height: number}}
+ */
+export function snapBox(b, gridSize = DEFAULT_GRID, size = null) {
+  const { w, h } = b.size;
+  const restW = Number.isFinite(size?.width) ? size.width : w;
+  const restH = Number.isFinite(size?.height) ? size.height : h;
+  const width = Math.max(gridSize, round(restW, gridSize));
+  const height = Math.max(gridSize, round(restH, gridSize));
+  if (width !== restW || height !== restH) b.set({ w: width, h: height });
+  const { x, y } = snapPosition(b, gridSize);
+  return { x, y, width, height };
+}
 
-  _onGestureEnd(pin, event) {
-    if (!this.enabled) return;
-    const payload = event ? event.payload : null;
-    if (payload && payload.cancelled) return;
-
-    if (event && event.type === RESIZE_END_SIGNAL) this.snapResize(pin);
-    else this.snap(pin);
-  }
-
-  /**
-   * Round a value to the nearest grid multiple.
-   */
-  _round(value) {
-    return Math.round(value / this.gridSize) * this.gridSize;
-  }
-
-  /**
-   * Round the Pin's position to the grid, writing only when it moves.
-   *
-   * @returns {{x: number, y: number}|null} the snapped position
-   */
-  snap(pin) {
-    if (!pin || !pin.particle) return null;
-
-    const x = this._round(pin.x);
-    const y = this._round(pin.y);
-    if (x !== pin.x || y !== pin.y) pin.setPosition(x, y);
-    return { x, y };
-  }
-
-  /**
-   * Round the Pin's whole box to the grid: its origin, so the box stays
-   * grid-aligned however a near-edge handle moved it, and its size, floored at
-   * one cell so a box never snaps away to nothing. The size goes through
-   * `resizePin` - the DOM is the size authority - and the origin through the
-   * same `setPosition` a drag snap uses.
-   *
-   * @returns {{x: number, y: number, width: number, height: number}|null}
-   */
-  snapResize(pin) {
-    if (!pin || !pin.particle) return null;
-
-    const width = Math.max(this.gridSize, this._round(pin.size.w));
-    const height = Math.max(this.gridSize, this._round(pin.size.h));
-    if (width !== pin.size.w || height !== pin.size.h) {
-      resizePin(pin, width, height);
-    }
-
-    const position = this.snap(pin);
-    return { x: position.x, y: position.y, width, height };
-  }
+/**
+ * The trait. @param {{gridSize?: number, enabled?: boolean}|true} [options] the cell size
+ * (24) and whether gestures snap (true)
+ * @returns {() => void} off
+ */
+export function snapToGrid(b, options) {
+  const { gridSize: requested, enabled = true } = options && typeof options === 'object' ? options : {};
+  const gridSize = Number(requested) > 0 ? Number(requested) : DEFAULT_GRID;
+  const onGestureEnd = (event) => {
+    const payload = event.detail?.payload;
+    if (!enabled || event.target !== b.el || payload?.cancelled) return;
+    if (event.type === RESIZE_END_SIGNAL) snapBox(b, gridSize, payload);
+    else snapPosition(b, gridSize);
+  };
+  b.el.addEventListener(DRAG_END_SIGNAL, onGestureEnd);
+  b.el.addEventListener(RESIZE_END_SIGNAL, onGestureEnd);
+  return () => {
+    b.el.removeEventListener(DRAG_END_SIGNAL, onGestureEnd);
+    b.el.removeEventListener(RESIZE_END_SIGNAL, onGestureEnd);
+  };
 }

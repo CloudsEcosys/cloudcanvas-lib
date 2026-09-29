@@ -2,15 +2,19 @@
  * CloudCanvas - NeoTec, LLC, Richard Christopher
  * Written by Richard Christopher, Copyright 2026 NeoTec, LLC
  *
- * The forms group (`cloudcanvas/forms`): seven native controls as Pins - button,
- * input, checkbox, radio (and radio group), toggle, slider, select.
+ * The forms group (`cloudcanvas/forms`): seven native controls as widgets -
+ * button, input, checkbox, radio (and radio group), toggle, slider, select.
  *
- * Every control is a `defineComponent` template on a real form element that
- * re-issues its native `input`/`change` as the Pin's own event. They stay on the
- * Pin shell until the Pin is retired: each one names its control by the Pin's id,
- * commits through `pin.setContent` and transmits a `PinEvent` up the scope chain.
+ *   const ok = createButton(app, { x: 40, y: 40, label: 'Save' });
+ *   const agree = createCheckbox(app, { x: 40, y: 80, label: 'Agree' });
  *
- * Registration is explicit: nothing here runs on import. Each `create<Name>Pin`
+ * Every control is a `widget()` (`cloudcanvas/widget`) on a real form element:
+ * its contents are the trait of its type's name, it names its control from the
+ * blit's element id, commits through `setContent`, and re-issues the native
+ * `input`/`change` as the blit's own (`b.emit`, bubbling). A button's press is
+ * the native `click`.
+ *
+ * Registration is explicit: nothing here runs on import. Each `create<Name>`
  * registers its own control on first call; `registerForms()` registers the set.
  * The stylesheet is the kit's (`../styles.js`), shared with the display group.
  */
@@ -22,21 +26,21 @@ import { registerToggle } from './toggle.js';
 import { registerSlider } from './slider.js';
 import { registerSelect } from './select.js';
 
-export { registerButton, createButtonPin } from './button.js';
-export { registerInput, createInputPin } from './input.js';
-export { registerCheckbox, createCheckboxPin } from './checkbox.js';
-export { registerRadio, registerRadioGroup, createRadioPin, createRadioGroupPin } from './radio.js';
-export { registerToggle, createTogglePin } from './toggle.js';
-export { registerSlider, createSliderPin } from './slider.js';
-export { registerSelect, createSelectPin } from './select.js';
+export { registerButton, createButton } from './button.js';
+export { registerInput, createInput } from './input.js';
+export { registerCheckbox, createCheckbox } from './checkbox.js';
+export { registerRadio, registerRadioGroup, createRadio, createRadioGroup } from './radio.js';
+export { registerToggle, createToggle } from './toggle.js';
+export { registerSlider, createSlider } from './slider.js';
+export { registerSelect, createSelect } from './select.js';
 
 /**
- * Register every form control, once each; a second call returns the same handles.
- * @returns {object[]} the component handles, in export order
+ * Define every form control, once each; a second call defines nothing new.
+ * @returns {string[]} the type names, in export order
  */
 export function registerForms() {
   return [
     registerButton(), registerInput(), registerCheckbox(), registerRadio(), registerRadioGroup(),
     registerToggle(), registerSlider(), registerSelect()
-  ];
+  ].map((defined) => defined.el.getAttribute('data-type'));
 }

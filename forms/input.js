@@ -2,40 +2,37 @@
  * CloudCanvas - NeoTec, LLC, Richard Christopher
  * Written by Richard Christopher, Copyright 2026 NeoTec, LLC
  *
- * Input: a real `<input>` - or `<textarea>` - and its `<label for>`.
+ * Input: a real `<input>` - or `<textarea>` - and its `<label for>`, as a widget.
+ *
+ *   registerInput();
+ *   const name = createInput(app, { x: 40, y: 40, label: 'Name', placeholder: 'who?' });
+ *   name.on('change', (event) => save(event.detail.payload));
  *
  * Two things separate this from every other control in the kit.
  *
- *   - **The edit lock is the design.** A display trait rewrites the content node
- *     from `pin.contents`, and an editor lives inside that node: a render during
- *     a keystroke takes the caret, the selection and the half-typed word with
- *     it. So `focus` takes the lock (`pin.beginEdit`) and `blur` commits the
- *     typed value and then releases it - in that order, because `endEdit`
- *     replays exactly one deferred render and it must find the committed value
- *     already in place. Nothing touches `pin.contents` in between: keystrokes go
- *     out as a live `input` PinEvent, so a consumer can follow them, while the
- *     model a render reads stays where the user left it.
- *   - **Both controls are built once.** `multiline` chooses between them, and a
- *     custom template's subtree is built once for the life of the Pin, so both
- *     elements exist from the first frame and visibility picks one. That is the
- *     same "hide it, do not rebuild it" rule the core's card template follows.
+ *   - **The edit lock is the design.** Every write re-renders, and an editor
+ *     lives inside the render: a render during a keystroke takes the caret, the
+ *     selection and the half-typed word with it. So `focus` takes the blit's edit
+ *     lock (`cloudcanvas/edit`) and `blur` commits the typed value and then
+ *     releases it - in that order, because `end` replays exactly one deferred
+ *     render and it must find the committed value already in place. Nothing
+ *     touches the contents in between: keystrokes go out as a live `input`
+ *     event, so a consumer can follow them, while the value a render reads stays
+ *     where the user left it.
+ *   - **Both controls are in the template.** `multiline` chooses between them and
+ *     visibility picks one: hide it, do not rebuild it.
  *
- * The accessible name is the native one: a `<label for>` pointing at a stable
- * per-Pin id. No `aria-label` is written, because the correct pattern needs none.
+ * The accessible name is the native one: a `<label for>` pointing at an id
+ * derived from the blit's element id. No `aria-label` is written.
  */
-
-import {
-  defineComponent,
-  makeElement,
-  makeTextNode,
-  setAttr,
-  setText,
-  setVisible,
-  PinEvent
-} from '../../.plugin/index.js';
+import { blit } from '../../.plugin/core/index.js';
+import { begin, end } from '../../.plugin/addons/edit.js';
+import { leadingText, setAttr, setContent, setVisible, widget, widgetSpec } from '../../.plugin/addons/widget.js';
 import { asText } from '../coerce.js';
+import { injectLibStyles } from '../styles.js';
+import { nameControl, renderLabel, setFlag, stopAtControl } from './control.js';
 
-/** Registry name, and the `type` a caller creates a Pin by. */
+/** The type name. */
 const NAME = 'input';
 
 const ROOT_CLASS = 'cloudcanvas-lib-input';
@@ -49,62 +46,49 @@ const CONTROL_CLASS = 'cloudcanvas-lib-input-control';
 const TYPES = new Set(['text', 'email', 'password', 'number']);
 const DEFAULT_TYPE = 'text';
 
-/** The content keys an Input accepts; anything else is refused by `setContents`. */
-const ALLOWED_KEYS = ['label', 'value', 'placeholder', 'type', 'multiline', 'disabled', 'required'];
-
-/**
- * Wire one control into the edit-lock contract. Both controls get all three.
- *
- * The control's native `input` / `change` stop at the control and are re-issued
- * as the Pin's own event, the way a custom element encapsulates its inner events.
- */
-function wire(pin, control) {
-  control.addEventListener('focus', () => pin.beginEdit(control));
-
-  control.addEventListener('input', (event) => {
-    // The control's native event is re-issued as the Pin's own below; it stops
-    // here so a Pin listener hears one `input`, with the payload.
-    event.stopPropagation();
-    // Live, and deliberately model-free: `pin.contents` stays untouched until
-    // the edit is committed, so nothing can be rendered over mid-word.
-    pin.transmit(new PinEvent('input', { payload: control.value, bubbles: true, source: pin }));
-  });
-
-  // The Pin's `change` is the commit on blur below; the control's native one
-  // stops here so a Pin listener hears one `change`, with the payload.
-  control.addEventListener('change', (event) => event.stopPropagation());
-
-  control.addEventListener('blur', () => {
-    pin.setContent('value', control.value);
-    pin.endEdit();
-    pin.transmit(new PinEvent('change', { payload: control.value, bubbles: true, source: pin }));
-  });
+/** Close the edit: commit the typed value, release the lock (its one replay finds the commit), announce it. */
+function commit(b, control) {
+  setContent(b, 'value', control.value);
+  end(b);
+  b.emit('change', control.value);
 }
 
-/** Build once: the label and both controls, with their ids and listeners. */
-function build(pin, contentEl) {
-  const root = makeElement('div', ROOT_CLASS);
-  const label = makeElement('label', LABEL_CLASS);
-  const labelText = makeTextNode(label);
-
-  const single = makeElement('input', CONTROL_CLASS);
-  single.id = `${pin.id}-control`;
-  const multi = makeElement('textarea', CONTROL_CLASS);
-  multi.id = `${pin.id}-control-multiline`;
-
-  wire(pin, single);
-  wire(pin, multi);
-
-  root.appendChild(label);
-  root.appendChild(single);
-  root.appendChild(multi);
-  contentEl.replaceChildren(root);
-
-  return { root, label, labelText, single, multi };
+/** Wire one control into the edit-lock contract. Both controls get all four listeners. */
+function wire(b, on, control) {
+  on(control, 'focus', () => begin(b, control));
+  // Live, and deliberately content-free: nothing re-renders mid-word.
+  on(control, 'input', (event) => {
+    stopAtControl(event);
+    b.emit('input', control.value);
+  });
+  // The blit's `change` is the commit on blur.
+  on(control, 'change', stopAtControl);
+  on(control, 'blur', () => commit(b, control));
 }
 
-/** Mutate after: which control is live, what it says, and what it holds. */
-function update(pin, contents, bindings, cache) {
+/** The label and both controls, named from the blit's element id, and their listeners. */
+function bind(host, on) {
+  const b = blit(host);
+  const root = host.querySelector(`.${ROOT_CLASS}`);
+  const label = root.querySelector(`.${LABEL_CLASS}`);
+  const single = root.querySelector('input');
+  const multi = root.querySelector('textarea');
+  nameControl(host, single, 'control');
+  nameControl(host, multi, 'control-multiline');
+  wire(b, on, single);
+  wire(b, on, multi);
+  return { root, label, labelText: leadingText(label), single, multi };
+}
+
+/** `placeholder`, `disabled` and `required` for one control. */
+function applyState(control, contents, cache, key) {
+  setAttr(control, 'placeholder', asText(contents.get('placeholder')), cache, `${key}:placeholder`);
+  setFlag(control, 'disabled', contents.get('disabled'));
+  setFlag(control, 'required', contents.get('required'));
+}
+
+/** Which control is live, what names it, and what it holds. */
+function render(bindings, contents, cache) {
   const multiline = contents.get('multiline') === true;
   const control = multiline ? bindings.multi : bindings.single;
 
@@ -112,51 +96,35 @@ function update(pin, contents, bindings, cache) {
   setVisible(bindings.multi, multiline);
   // The label names whichever control is showing.
   setAttr(bindings.label, 'for', control.id, cache, 'for');
+  renderLabel(bindings.label, bindings.labelText, contents.get('label'));
 
-  const label = contents.get('label');
-  setText(bindings.labelText, label);
-  setVisible(bindings.label, Boolean(label));
-
-  setAttr(bindings.single, 'type', TYPES.has(contents.get('type')) ? contents.get('type') : DEFAULT_TYPE, cache, 'type');
+  const type = contents.get('type');
+  setAttr(bindings.single, 'type', TYPES.has(type) ? type : DEFAULT_TYPE, cache, 'type');
   applyState(bindings.single, contents, cache, 'single');
   applyState(bindings.multi, contents, cache, 'multi');
 
-  // Only the live control carries the value; the other is written by the very
-  // render that reveals it.
+  // Only the live control carries the value; the other is written by the render that reveals it.
   const value = asText(contents.get('value'));
   if (control.value !== value) control.value = value;
 }
 
-/** `placeholder`, `disabled` and `required` for one control. */
-function applyState(control, contents, cache, key) {
-  setAttr(control, 'placeholder', asText(contents.get('placeholder')), cache, `${key}:placeholder`);
+const SPEC = Object.freeze({
+  name: NAME,
+  html: `<div class="${ROOT_CLASS}"><label class="${LABEL_CLASS}"></label>`
+    + `<input class="${CONTROL_CLASS}"><textarea class="${CONTROL_CLASS}" hidden></textarea></div>`,
+  keys: ['label', 'value', 'placeholder', 'type', 'multiline', 'disabled', 'required'],
+  bind,
+  render
+});
 
-  const disabled = contents.get('disabled') === true;
-  if (control.disabled !== disabled) control.disabled = disabled;
-
-  const required = contents.get('required') === true;
-  if (control.required !== required) control.required = required;
-}
-
-/** Lazy, memoised registration; see `./button.js` on why it is never at import time. */
-let handle = null;
-
-/** @returns {{name: string, createTrait: Function}} the component handle */
+/** Define the Input widget, once. @returns {object} its type */
 export function registerInput() {
-  if (!handle) {
-    handle = defineComponent({
-      name: NAME,
-      build,
-      update,
-      chrome: false,
-      allowedKeys: ALLOWED_KEYS
-    });
-  }
-  return handle;
+  injectLibStyles();
+  return widget(SPEC);
 }
 
-/** Create an Input Pin on `session`; see `./text.js` on the option order. */
-export function createInputPin(session, options = {}) {
+/** A chromeless Input blit in `parent`; its contents may come flat or as `contents`. */
+export function createInput(parent, options = {}) {
   registerInput();
-  return session.createPin({ chrome: false, ...options, type: NAME });
+  return parent.blit(widgetSpec(NAME, { chrome: false, ...options }));
 }

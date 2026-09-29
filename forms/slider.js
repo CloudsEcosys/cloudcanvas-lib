@@ -2,36 +2,32 @@
  * CloudCanvas - NeoTec, LLC, Richard Christopher
  * Written by Richard Christopher, Copyright 2026 NeoTec, LLC
  *
- * Slider: a real `<input type="range">` with a live readout.
+ * Slider: a real `<input type="range">` with a live readout, as a widget.
  *
- * A drag is a stream, and the model is not: committing every intermediate value
- * into `pin.contents` would invalidate the Pin on every pointer move and fight
- * the very control the user is holding. So the two halves are split exactly
- * where the interaction is.
+ *   registerSlider();
+ *   const volume = createSlider(app, { x: 40, y: 40, label: 'Volume', value: 5, max: 10 });
  *
- *   - `input` (every tick) writes the readout directly and transmits the raw
- *     number. `pin.contents` is not touched, so nothing re-renders and nothing
+ * A drag is a stream, and the contents are not: committing every intermediate
+ * value would re-render on every pointer move and fight the very control the
+ * user is holding. So the two halves are split exactly where the interaction is.
+ *
+ *   - `input` (every tick) writes the readout directly and emits the raw
+ *     number. The contents are not touched, so nothing re-renders and nothing
  *     is written back over the thumb.
- *   - `change` (the release) commits once, through `pin.setContent`, and
- *     transmits again. From there the render pass is the source of truth.
+ *   - `change` (the release) commits once, through `setContent`, and emits
+ *     again. From there the render is the source of truth.
  *
  * The readout is a plain `<span>` written through `setText`, so the value the
  * user is dragging past is real text a screen reader can be pointed at - and
  * the native range already publishes `aria-valuenow` for itself.
  */
-
-import {
-  defineComponent,
-  makeElement,
-  makeTextNode,
-  setAttr,
-  setText,
-  setVisible,
-  PinEvent
-} from '../../.plugin/index.js';
+import { blit } from '../../.plugin/core/index.js';
+import { leadingText, setAttr, setText, widget, widgetSpec } from '../../.plugin/addons/widget.js';
 import { toNumber } from '../coerce.js';
+import { injectLibStyles } from '../styles.js';
+import { commitOn, linkLabel, renderLabel, setFlag, stopAtControl } from './control.js';
 
-/** Registry name, and the `type` a caller creates a Pin by. */
+/** The type name. */
 const NAME = 'slider';
 
 const ROOT_CLASS = 'cloudcanvas-lib-slider';
@@ -45,70 +41,29 @@ const DEFAULT_MIN = 0;
 const DEFAULT_MAX = 100;
 const DEFAULT_STEP = 1;
 
-/** The content keys a Slider accepts; anything else is refused by `setContents`. */
-const ALLOWED_KEYS = ['label', 'value', 'min', 'max', 'step', 'disabled'];
+/** The label, the range and the readout; a tick moves the readout only, the release commits. */
+function bind(host, on) {
+  const b = blit(host);
+  const root = host.querySelector(`.${ROOT_CLASS}`);
+  const label = root.querySelector(`.${LABEL_CLASS}`);
+  const control = root.querySelector(`.${CONTROL_CLASS}`);
+  const readout = root.querySelector(`.${VALUE_CLASS}`);
+  const readoutText = leadingText(readout);
+  linkLabel(host, control, label);
 
-/**
- * Build once: the label, the range, the readout, and both listeners.
- *
- * The control's native `input` / `change` stop at the control and are re-issued
- * as the Pin's own event, the way a custom element encapsulates its inner events.
- */
-function build(pin, contentEl) {
-  const root = makeElement('div', ROOT_CLASS);
-  const label = makeElement('label', LABEL_CLASS);
-  const labelText = makeTextNode(label);
-
-  const row = makeElement('div', ROW_CLASS);
-  const control = makeElement('input', CONTROL_CLASS);
-  control.setAttribute('type', 'range');
-  control.id = `${pin.id}-control`;
-
-  const readout = makeElement('span', VALUE_CLASS);
-  const readoutText = makeTextNode(readout);
-
-  control.addEventListener('input', (event) => {
-    // The control's native event is re-issued as the Pin's own below; it stops
-    // here so a Pin listener hears one `input`, with the payload.
-    event.stopPropagation();
-    // Readout only: the model stays where it is until the drag is released.
+  on(control, 'input', (event) => {
+    stopAtControl(event);
     setText(readoutText, control.value);
-    pin.transmit(new PinEvent('input', {
-      payload: Number(control.value),
-      bubbles: true,
-      source: pin
-    }));
+    b.emit('input', Number(control.value));
   });
-
-  control.addEventListener('change', (event) => {
-    // The control's native event is re-issued as the Pin's own below; it stops
-    // here so a Pin listener hears one `change`, with the payload.
-    event.stopPropagation();
-    pin.setContent('value', Number(control.value));
-    pin.transmit(new PinEvent('change', {
-      payload: Number(control.value),
-      bubbles: true,
-      source: pin
-    }));
-  });
-
-  row.appendChild(control);
-  row.appendChild(readout);
-  root.appendChild(label);
-  root.appendChild(row);
-  contentEl.replaceChildren(root);
-
-  return { root, label, labelText, row, control, readout, readoutText };
+  commitOn(on, b, control, 'change', 'value', (element) => Number(element.value));
+  return { root, label, labelText: leadingText(label), control, readout, readoutText };
 }
 
-/** Mutate after: the bounds first, then the value they clamp. */
-function update(pin, contents, bindings, cache) {
+/** The bounds first, then the value they clamp. */
+function render(bindings, contents, cache) {
   const { control } = bindings;
-
-  const label = contents.get('label');
-  setText(bindings.labelText, label);
-  setVisible(bindings.label, Boolean(label));
-  setAttr(bindings.label, 'for', control.id, cache, 'for');
+  renderLabel(bindings.label, bindings.labelText, contents.get('label'));
 
   const min = toNumber(contents.get('min'), DEFAULT_MIN);
   const declaredMax = toNumber(contents.get('max'), DEFAULT_MAX);
@@ -122,34 +77,29 @@ function update(pin, contents, bindings, cache) {
   setAttr(control, 'max', String(max), cache, 'max');
   setAttr(control, 'step', String(step > 0 ? step : DEFAULT_STEP), cache, 'step');
 
-  const value = Math.min(Math.max(toNumber(contents.get('value'), min), min), max);
-  const text = String(value);
+  const text = String(Math.min(Math.max(toNumber(contents.get('value'), min), min), max));
   if (control.value !== text) control.value = text;
   setText(bindings.readoutText, text);
-
-  const disabled = contents.get('disabled') === true;
-  if (control.disabled !== disabled) control.disabled = disabled;
+  setFlag(control, 'disabled', contents.get('disabled'));
 }
 
-/** Lazy, memoised registration; see `./button.js` on why it is never at import time. */
-let handle = null;
+const SPEC = Object.freeze({
+  name: NAME,
+  html: `<div class="${ROOT_CLASS}"><label class="${LABEL_CLASS}"></label><div class="${ROW_CLASS}">`
+    + `<input class="${CONTROL_CLASS}" type="range"><span class="${VALUE_CLASS}"></span></div></div>`,
+  keys: ['label', 'value', 'min', 'max', 'step', 'disabled'],
+  bind,
+  render
+});
 
-/** @returns {{name: string, createTrait: Function}} the component handle */
+/** Define the Slider widget, once. @returns {object} its type */
 export function registerSlider() {
-  if (!handle) {
-    handle = defineComponent({
-      name: NAME,
-      build,
-      update,
-      chrome: false,
-      allowedKeys: ALLOWED_KEYS
-    });
-  }
-  return handle;
+  injectLibStyles();
+  return widget(SPEC);
 }
 
-/** Create a Slider Pin on `session`; see `./text.js` on the option order. */
-export function createSliderPin(session, options = {}) {
+/** A chromeless Slider blit in `parent`; its contents may come flat or as `contents`. */
+export function createSlider(parent, options = {}) {
   registerSlider();
-  return session.createPin({ chrome: false, ...options, type: NAME });
+  return parent.blit(widgetSpec(NAME, { chrome: false, ...options }));
 }

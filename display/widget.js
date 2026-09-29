@@ -2,100 +2,59 @@
  * CloudCanvas - NeoTec, LLC, Richard Christopher
  * Written by Richard Christopher, Copyright 2026 NeoTec, LLC
  *
- * A display widget on both engines, from one template and one render.
+ * A display widget from one template and one render: `widget()`
+ * (`cloudcanvas/widget`) plus the kit's stylesheet and a chromeless factory.
  *
- * The template is the widget's core type. `define()` registers it with `type()`
- * and gives it a trait of the same name whose options are the contents, so a
- * core root places one and re-renders it by writing that key:
+ *   const progress = defineWidget({ name: 'progress', html, allowedKeys: ['value', 'label'], bind, render });
+ *   const bar = progress.create(app, { x: 40, y: 40, value: 40, label: 'Upload' });
+ *   setContent(bar, 'value', 80);
  *
- *   progressType();
- *   const bar = root.blit({ type: 'progress', progress: { value: 40, label: 'Upload' } });
- *   bar.set({ progress: { value: 80, label: 'Upload' } });
- *
- * The legacy Pin component (`register()` / `create(session, options)`) renders
- * through the same template: `defineComponent` clones it into the content
- * element, `bind` finds the nodes, and its update is the same `render`. One
- * structure, one render, two shells; the DOM either shell builds is the same.
- *
- *   bind(host, on, dismiss)            the nodes of the clone under `host`; must be
- *                                      idempotent, since a core trait rebinds on every write
+ *   bind(host, on, dismiss)            the nodes under the blit's element; idempotent, since it
+ *                                      runs on every write
  *   render(bindings, contents, cache)  `contents` (a Map) into them, diff-first through `cache`
  *
- * `on(target, type, listener)` is how `bind` listens: for the life of the Pin, or
- * until the core trait stops. `dismiss()` is the widget asking to go away, one
- * convention on both shells: a cancellable `dismiss` event whose default action -
- * removing the widget - a listener stops with `preventDefault()`.
+ * `on(target, type, listener)` is how `bind` listens, until the trait restarts.
+ * `dismiss()` is the widget asking to go away: a cancelable `dismiss` event whose
+ * default action - removing the blit - a listener stops with `preventDefault()`.
  */
-import { widget } from '../../.plugin/addons/widget.js';
-import { PinEvent, defineComponent } from '../../.plugin/index.js';
+import { widget, widgetSpec } from '../../.plugin/addons/widget.js';
 import { injectLibStyles } from '../styles.js';
 
-export { leadingText } from '../../.plugin/addons/widget.js';
-
-/** On a Pin: transmit a cancellable `dismiss`, then remove the Pin unless a listener said not to. */
-function dismissPin(pin) {
-  const event = new PinEvent('dismiss', { bubbles: true });
-  pin.transmit(event);
-  if (event.cancelled) return false;
-  const session = pin.session;
-  if (!session || typeof session.removePin !== 'function') return false;
-  session.removePin(pin.id);
-  return true;
-}
-
-/** A Pin's listeners live as long as its subtree. */
-function listenForever(target, eventType, listener) {
-  target.addEventListener(eventType, listener);
-}
-
 /**
- * One widget, both shells.
+ * One display widget: its definition, once, and a factory.
  * @param {{name: string, html: string, allowedKeys: string[], bind: Function, render: Function}} spec
  *   `html` is constant markup, never data
- * @returns {{name: string, register: Function, create: Function, define: Function}}
+ * @returns {{name: string, define: Function, create: Function}}
  */
 export function defineWidget(spec) {
   const { name, html, allowedKeys, bind, render } = spec;
-  let template = null;
-  let handle = null;
-  let defined = null;
+  const definition = Object.freeze({ name, html, keys: allowedKeys, bind, render });
 
-  /** The widget's `<template>`, parsed once, on first use: both shells clone this one element. */
-  const templateOf = () => {
-    if (!template) {
-      template = document.createElement('template');
-      template.innerHTML = html;
-    }
-    return template;
-  };
-
-  /** The legacy Pin component, registered once; a second call returns the same handle. */
-  function register() {
-    handle ??= defineComponent({
-      name,
-      template: templateOf,
-      build: (pin, contentEl) => bind(contentEl, listenForever, () => dismissPin(pin)),
-      update: (pin, contents, bindings, cache) => render(bindings, contents, cache),
-      chrome: false,
-      allowedKeys
-    });
-    return handle;
-  }
-
-  /** A chromeless Pin of this widget; `type` is written last so a caller cannot break the identity. */
-  function create(session, options = {}) {
-    register();
-    return session.createPin({ chrome: false, ...options, type: name });
-  }
-
-  /** The core widget (`cloudcanvas/widget`): its type and same-named trait, once. @returns {object} its potential blit */
+  /** The widget's type and same-named trait, once. @returns {object} its type */
   function define() {
-    if (!defined) {
-      injectLibStyles();
-      defined = widget({ name, html, keys: allowedKeys, bind, render });
-    }
-    return defined;
+    injectLibStyles();
+    return widget(definition);
   }
 
-  return Object.freeze({ name, register, create, define });
+  /** A chromeless blit of this widget in `parent`; its contents may come flat or as `contents`. */
+  function create(parent, options = {}) {
+    define();
+    return parent.blit(widgetSpec(name, { chrome: false, ...options }));
+  }
+
+  return Object.freeze({ name, define, create });
+}
+
+/**
+ * The element `current` should be when its tag is a content decision (`text`'s `as`, a divider's
+ * orientation): `current` itself when the tag already matches, else a fresh `tag` element carrying its
+ * classes, swapped into its place. Nothing moves while the choice is unchanged.
+ * @returns {Element} the element in place
+ */
+export function elementAs(current, tag) {
+  if (current.localName === tag) return current;
+  const next = document.createElement(tag);
+  next.className = current.className;
+  current.replaceWith(next);
+  return next;
 }

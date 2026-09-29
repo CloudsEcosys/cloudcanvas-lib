@@ -2,39 +2,32 @@
  * CloudCanvas - NeoTec, LLC, Richard Christopher
  * Written by Richard Christopher, Copyright 2026 NeoTec, LLC
  *
- * List: a keyed, selectable row list built on `defineComponent`.
+ * List: a keyed, selectable row list as a widget.
  *
- * The widget owns no selection state. `items` is read-only - the reconciler's
- * own contract, and the reason a frozen array reconciles exactly like a mutable
- * one - so a click does not rewrite it. Clicking (or Enter/Space on a focused
- * row) transmits `list:select` with the item's id and stops there; the consumer
- * decides what selection means and calls `setContent('items', next)` back with
- * the flags it wants painted. One direction of data flow, one owner per fact.
+ *   const list = createList(app, { x: 40, y: 40, items: [{ id: 'a', label: 'Alpha' }] });
+ *   list.on('list:select', (event) => setContent(list, 'items', markSelected(event.detail.payload.id)));
  *
- * Rows are reconciled by key rather than rebuilt: `reconcileKeyedList` reuses
- * the element already holding an item's id, so node identity - and therefore
- * focus, scroll position and the row a screen reader is sitting on - survives
- * every content change. Rebuilding the `<ul>` on each pass is the exact defect
- * this widget exists not to have.
+ * The widget owns no selection state. `items` is read, never written, so a click
+ * does not rewrite it. Clicking (or Enter/Space on a focused row) emits
+ * `list:select` with the item's id and stops there; the consumer decides what
+ * selection means and writes `items` back with the flags it wants painted. One
+ * direction of data flow, one owner per fact.
+ *
+ * Rows are reconciled by key rather than rebuilt: `reconcileKeyedList`
+ * (`cloudcanvas/keyed-list`) reuses the element already holding an item's id, so
+ * node identity - and therefore focus, scroll position and the row a screen
+ * reader is sitting on - survives every write.
  *
  * Activation is delegated to the `<ul>`: two listeners for the whole list rather
  * than two per row, so a thousand rows cost what one does and a reconciled row
  * needs no rebinding.
  */
+import { blit } from '../../.plugin/core/index.js';
+import { KEY_ATTR, reconcileKeyedList } from '../../.plugin/addons/keyed-list.js';
+import { contentOf, leadingText, setText } from '../../.plugin/addons/widget.js';
+import { defineWidget } from './widget.js';
 
-import {
-  KEY_ATTR,
-  PinEvent,
-  defineComponent,
-  makeElement,
-  makeTextNode,
-  reconcileKeyedList,
-  setText,
-  traitRegistry
-} from '../../.plugin/index.js';
-import { injectLibStyles } from '../styles.js';
-
-/** Registry name, and the trait's own name. */
+/** The type name; its contents live under the `libList` key. */
 export const LIST_TYPE = 'lib-list';
 
 /** Every class this widget emits. Styled by `LIB_DEFAULT_CSS`. */
@@ -46,24 +39,15 @@ export const LIST_CLS = /* @__PURE__ */ Object.freeze({
 });
 
 /**
- * The event a row activation transmits, bubbling up the scope chain.
- *
- * Namespaced, and it has to be: `select` alone is a core *Pin signal*
- * (`PIN_SIGNAL_TYPES` in `.plugin/pins/traits/base.js`). `PinSignalBus` subscribes
- * to that type on every registered Pin and the session routes it to
- * `handlePinSignal`, which reads a truthy payload as "this Pin is now selected"
- * and moves the selection cursor onto it - so a bare `select` would paint the
- * cursor on the list itself on every row click, and never release it. Every
- * component event in this codebase is namespaced for the same reason
- * (`note:edited`, `telemetry:alert`, `navigation:back`).
+ * The event a row activation emits, bubbling. Namespaced, and it has to be:
+ * `select` alone is the select add-on's (`cloudcanvas/select`) - an ancestor
+ * listening for "this blit is now selected" would read every row click as one.
+ * Every component event is namespaced for the same reason (`note:edited`).
  */
 export const SELECT_EVENT = 'list:select';
 
 /** Keys that activate a focused row, matching a native option list. */
 const ACTIVATION_KEYS = new Set(['Enter', ' ', 'Spacebar']);
-
-/** One handle per registry: the definition is per-registry, so the cache is too. */
-const handles = new WeakMap();
 
 /** An item's key: its own id, or its position when it has none. */
 function itemKey(item, index) {
@@ -71,21 +55,75 @@ function itemKey(item, index) {
   return index;
 }
 
-/* ------------------ TEMPLATE ------------------ */
+/**
+ * One row: a real list item that is also a real control. `data-cc-control` is the
+ * declaration that the canvas must stand down here (`CONTROL_SELECTOR`), so
+ * pressing a row selects it instead of dragging the blit; `tabindex="0"` makes it
+ * operable by keyboard, the other half of being a control.
+ */
+function createRow() {
+  const li = document.createElement('li');
+  li.className = LIST_CLS.ITEM;
+  li.setAttribute('tabindex', '0');
+  li.setAttribute('data-cc-control', '');
+  const label = document.createElement('span');
+  label.className = LIST_CLS.ITEM_LABEL;
+  leadingText(label);
+  li.appendChild(label);
+  return li;
+}
 
-/** Build the container once and delegate activation to it. */
-function build(pin, contentEl) {
-  const root = makeElement('ul', LIST_CLS.ROOT);
-  root.addEventListener('click', (event) => activateFrom(pin, root, event, false));
-  root.addEventListener('keydown', (event) => {
-    if (ACTIVATION_KEYS.has(event.key)) activateFrom(pin, root, event, true);
+/** Write one item into its row; both writes diff first, so an unchanged item costs no DOM write. */
+function updateRow(li, item) {
+  const label = li.querySelector(`.${LIST_CLS.ITEM_LABEL}`);
+  if (label) setText(leadingText(label), item && item.label);
+
+  const selected = Boolean(item && item.selected);
+  if (li.classList.contains(LIST_CLS.ITEM_SELECTED) === selected) return;
+  li.classList.toggle(LIST_CLS.ITEM_SELECTED, selected);
+  // `aria-selected` belongs to listbox semantics this plain list does not claim;
+  // `aria-current` is the valid way to mark the chosen member of a set.
+  if (selected) li.setAttribute('aria-current', 'true');
+  else li.removeAttribute('aria-current');
+}
+
+/**
+ * Resolve the row an event landed on and emit its selection. The key on the
+ * element is a string, so the item is looked up rather than reconstructed: the
+ * payload carries the caller's own id, with its own type.
+ */
+function activateFrom(b, root, event, fromKeyboard) {
+  const row = typeof event.target?.closest === 'function' ? event.target.closest(`.${LIST_CLS.ITEM}`) : null;
+  if (!row || !root.contains(row)) return;
+
+  const items = contentOf(b).items;
+  const key = row.getAttribute(KEY_ATTR);
+  const index = Array.isArray(items)
+    ? items.findIndex((entry, position) => String(itemKey(entry, position)) === key)
+    : -1;
+  if (index === -1) return;
+
+  // A row that handles the key owns it outright: no keyboard binding above sees it.
+  if (fromKeyboard) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  b.emit(SELECT_EVENT, { id: items[index].id });
+}
+
+/** The `<ul>`, and activation delegated to it. */
+function bind(host, on) {
+  const b = blit(host);
+  const root = host.querySelector(`.${LIST_CLS.ROOT}`);
+  on(root, 'click', (event) => activateFrom(b, root, event, false));
+  on(root, 'keydown', (event) => {
+    if (ACTIVATION_KEYS.has(event.key)) activateFrom(b, root, event, true);
   });
-  contentEl.replaceChildren(root);
   return { root };
 }
 
 /** Reconcile the rows against `items`; nothing else is written. */
-function update(pin, contents, bindings) {
+function render(bindings, contents) {
   const items = contents.get('items');
   reconcileKeyedList(bindings.root, Array.isArray(items) ? items : [], {
     key: itemKey,
@@ -94,141 +132,16 @@ function update(pin, contents, bindings) {
   });
 }
 
-/**
- * One row: a real list item that is also a real control.
- *
- * `data-cc-control` is the declaration that the canvas must stand down here -
- * both the pointer router and `DraggableTrait` read it (`CONTROL_SELECTOR` in
- * `.plugin/addons/trait.js`) - so pressing a row selects it instead of dragging
- * the Pin. `tabindex="0"` makes it operable by keyboard, which is the other half
- * of being a control.
- */
-function createRow() {
-  const li = makeElement('li', LIST_CLS.ITEM);
-  li.setAttribute('tabindex', '0');
-  li.setAttribute('data-cc-control', '');
-  const label = makeElement('span', LIST_CLS.ITEM_LABEL);
-  makeTextNode(label);
-  li.appendChild(label);
-  return li;
-}
+const widget = /* @__PURE__ */ defineWidget({
+  name: LIST_TYPE,
+  html: `<ul class="${LIST_CLS.ROOT}"></ul>`,
+  allowedKeys: ['items'],
+  bind,
+  render
+});
 
-/**
- * Write one item into its row.
- *
- * The text node is re-derived rather than cached in a side table: the row is one
- * span with one text child, `querySelector` finds it in constant depth, and a
- * WeakMap of node references would be a second copy of state the DOM already
- * holds. Both writes diff first, so an unchanged item costs zero DOM writes -
- * which is what the renderer's idle-frame model depends on.
- */
-function updateRow(li, item) {
-  const label = li.querySelector(`.${LIST_CLS.ITEM_LABEL}`);
-  if (label && label.firstChild) setText(label.firstChild, item && item.label);
+/** Define the list widget, once. @returns {object} its type */
+export const registerList = widget.define;
 
-  const selected = Boolean(item && item.selected);
-  if (li.classList.contains(LIST_CLS.ITEM_SELECTED) === selected) return;
-
-  li.classList.toggle(LIST_CLS.ITEM_SELECTED, selected);
-  // `aria-selected` belongs to listbox semantics this plain list does not claim;
-  // `aria-current` is the valid way to mark the chosen member of a set.
-  if (selected) li.setAttribute('aria-current', 'true');
-  else li.removeAttribute('aria-current');
-}
-
-/* ------------------ ACTIVATION ------------------ */
-
-/**
- * Resolve the row an event landed on and transmit its selection.
- *
- * The key on the element is a string (the reconciler stamps it that way), so the
- * item is looked up rather than reconstructed: the payload carries the caller's
- * own id, with its own type, not a stringified copy of it.
- */
-function activateFrom(pin, root, event, fromKeyboard) {
-  const target = event.target;
-  const row = target && typeof target.closest === 'function'
-    ? target.closest(`.${LIST_CLS.ITEM}`)
-    : null;
-  if (!row || !root.contains(row)) return;
-
-  const items = pin.contents.get('items');
-  const key = row.getAttribute(KEY_ATTR);
-  const index = Array.isArray(items)
-    ? items.findIndex((entry, position) => String(itemKey(entry, position)) === key)
-    : -1;
-  if (index === -1) return;
-
-  if (fromKeyboard) {
-    // Enter focuses a Pin and Space activates it (`KEY_BINDINGS` in
-    // `.plugin/engine/keyboard.js`); a row that handles the key owns it outright.
-    event.preventDefault();
-    event.stopPropagation();
-  }
-
-  pin.transmit(new PinEvent(SELECT_EVENT, {
-    payload: { id: items[index].id },
-    bubbles: true,
-    source: pin
-  }));
-}
-
-/* ------------------ REGISTRATION ------------------ */
-
-/**
- * Define the list component, once per registry.
- *
- * Idempotent because both entry points reach it: `registerBaseTypes()` and the
- * factory's own lazy call. `registry.clear()` drops the definition and replays
- * only its default providers, so a stale handle is re-defined rather than
- * returned - a handle whose name no longer exists would throw at `createTrait`.
- *
- * @param {TraitRegistry} [registry] defaults to the shared singleton
- * @returns {ComponentHandle}
- */
-export function registerList(registry = traitRegistry) {
-  const cached = handles.get(registry);
-  if (cached && registry.has(LIST_TYPE)) return cached;
-
-  const handle = defineComponent({
-    name: LIST_TYPE,
-    build,
-    update,
-    allowedKeys: ['items'],
-    chrome: false,
-    registry
-  });
-
-  handles.set(registry, handle);
-  return handle;
-}
-
-/**
- * Create a list Pin in a session.
- *
- * @param {CloudCanvasSession} session
- * @param {object} [options] Pin options; `contents.items` is the row array, and
- *   `registry` targets a registry other than the shared singleton
- * @returns {Pin}
- */
-export function createListPin(session, options = {}) {
-  if (!session || typeof session.createPin !== 'function') {
-    throw new TypeError('createListPin: a CloudCanvasSession is required');
-  }
-
-  const { registry, contents, ...pinOptions } = options;
-  const component = registerList(registry);
-  injectLibStyles();
-
-  // `chrome` is read from the Pin's own options, not from the trait, so the
-  // component's declaration has to be restated here to reach the element - and
-  // stated *before* the spread, so a caller who wants the card back can say so.
-  return session.createPin({
-    chrome: false,
-    x: 0,
-    y: 0,
-    ...pinOptions,
-    displayTrait: component.createTrait(),
-    contents: contents || { items: [] }
-  });
-}
+/** A chromeless list blit in `parent`: `createList(app, { x, y, items })`. */
+export const createList = widget.create;

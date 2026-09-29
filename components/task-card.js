@@ -4,36 +4,28 @@
  *
  * TaskCard: a checklist with a priority chip and a progress bar.
  *
+ *   registerTaskCard();
+ *   const task = createTaskCard(app, { title: 'Ship it', items: [{ text: 'Test', done: false }] });
+ *   toggleTaskItem(task, 0);                  // task:updated {index, item, progress}
+ *
  * The checklist is real form markup: each row is an `<input type="checkbox">`
  * and its `<label for>`, so ticking works from the keyboard and the row is
  * announced as what it is. Rows are reconciled by key rather than rebuilt, so
  * the checkbox that has focus is the checkbox that stays. One `change`
  * listener on the list serves every row.
  *
- * `items` is read, never written: a toggle produces a new array with a new
- * item in place of the old one (`toggleTaskItem`), the reconciler's own
- * contract. The completion percentage lives in the Pin's primary vector,
- * kept in step from the toggle path - not from the render pass, where a
- * vector write would invalidate the render that is running.
+ * `items` is read, never written: a toggle writes a new array with a new item
+ * in place of the old one. The completion percentage is the `progress` content
+ * key, seeded by the factory and kept in step by the toggle; the bar itself is
+ * drawn from the items, so it can never disagree with the list it measures.
  */
+import { blit } from '../../.plugin/core/index.js';
+import { reconcileKeyedList } from '../../.plugin/addons/keyed-list.js';
+import { contentOf, leadingText, setAttr, setContents, setText, widget, widgetSpec } from '../../.plugin/addons/widget.js';
+import { keyedIndexOf, withDefaults } from './registrar.js';
+import { injectComponentStyles } from './styles.js';
 
-import {
-  KEY_ATTR,
-  PinEvent,
-  makeElement,
-  makeTextNode,
-  reconcileKeyedList,
-  setAttr,
-  setText
-} from '../../.plugin/index.js';
-import {
-  claimHost,
-  createComponentPin,
-  makeRegistrar,
-  splitOptions
-} from './registrar.js';
-
-/** Registry name, and the `type` a caller creates a Pin by. */
+/** The type name. */
 export const TASK_CARD_TYPE = 'task-card';
 
 /** Every class this widget emits. Styled by `COMPONENT_DEFAULT_CSS`. */
@@ -53,8 +45,14 @@ export const TASK_CLS = /* @__PURE__ */ Object.freeze({
 /** The priorities the sheet has a fill for; anything else is `normal`. */
 export const TASK_PRIORITIES = /* @__PURE__ */ Object.freeze(['urgent', 'high', 'normal', 'low']);
 
+/** The event a toggle emits. */
+export const TASK_UPDATED_EVENT = 'task:updated';
+
 const DEFAULT_PRIORITY = 'normal';
-const ALLOWED_KEYS = ['title', 'priority', 'items', 'assignee'];
+
+/** Row-id prefixes for elements without an id of their own, made once per element. */
+const ROW_PREFIXES = /* @__PURE__ */ new WeakMap();
+let rowSerial = 0;
 
 /** An item's key: its own id, or its position when it has none. */
 function itemKey(item, index) {
@@ -75,65 +73,51 @@ export function taskProgressOf(items) {
   return Math.round((done / items.length) * 100);
 }
 
-/** Write the percentage into the primary vector; seed it when there is none. */
-function syncProgress(pin, items) {
-  const progress = taskProgressOf(items);
-  if (pin.particle.getVectors().length > 0) pin.setVector(0, progress);
-  else pin.addVector(progress);
-  return progress;
-}
-
 /* ------------------ BEHAVIOUR ------------------ */
 
 /**
- * Flip one item's `done`, immutably, and announce the new progress.
- *
+ * Flip one item's `done`, immutably, keep `progress` in step, and emit `task:updated`.
  * @returns {boolean} whether an item was toggled
  */
-export function toggleTaskItem(pin, index) {
-  const items = pin.contents.get('items');
+export function toggleTaskItem(b, index) {
+  const items = contentOf(b).items;
   if (!Array.isArray(items) || !items[index]) return false;
-
-  const next = items.map((item, position) => (
-    position === index ? { ...item, done: !item.done } : item
-  ));
-  pin.setContent('items', next);
-  const progress = syncProgress(pin, next);
-
-  pin.transmit(new PinEvent('task:updated', {
-    payload: { index, item: next[index], progress },
-    bubbles: true,
-    source: pin
-  }));
+  const next = items.map((item, position) => (position === index ? { ...item, done: !item.done } : item));
+  const progress = taskProgressOf(next);
+  setContents(b, { items: next, progress });
+  b.emit(TASK_UPDATED_EVENT, { index, item: next[index], progress });
   return true;
-}
-
-/** Resolve the row a `change` landed on and toggle its item. */
-function onChecklistChange(pin, list, event) {
-  const target = event.target;
-  const row = target && typeof target.closest === 'function' ? target.closest(`.${TASK_CLS.ITEM}`) : null;
-  if (!row || !list.contains(row)) return;
-
-  const items = pin.contents.get('items');
-  const key = row.getAttribute(KEY_ATTR);
-  const index = Array.isArray(items)
-    ? items.findIndex((item, position) => String(itemKey(item, position)) === key)
-    : -1;
-  if (index !== -1) toggleTaskItem(pin, index);
 }
 
 /* ------------------ TEMPLATE ------------------ */
 
+const HTML = `<div class="cloudcanvas-component cloudcanvas-component-card ${TASK_CLS.ROOT}">`
+  + `<div class="${TASK_CLS.HEADER}"><div class="${TASK_CLS.TITLE}"></div>`
+  + `<span class="cloudcanvas-component-chip ${TASK_CLS.PRIORITY}"></span></div>`
+  + `<ul class="${TASK_CLS.CHECKLIST}"></ul>`
+  + `<progress class="cloudcanvas-component-meter ${TASK_CLS.PROGRESS}" max="100" aria-label="Checklist progress"></progress>`
+  + '</div>';
+
+/** The prefix a card's checkbox ids start with: its own id, else one made for it. */
+function rowPrefixOf(host) {
+  if (host.id) return host.id;
+  if (!ROW_PREFIXES.has(host)) ROW_PREFIXES.set(host, `cc-task-${rowSerial += 1}`);
+  return ROW_PREFIXES.get(host);
+}
+
 /** One row: the checkbox, and the label that names it. */
-function makeRow(pin) {
+function rowMaker(prefix) {
   return (item, index) => {
-    const row = makeElement('li', TASK_CLS.ITEM);
-    const box = makeElement('input', TASK_CLS.BOX);
+    const row = document.createElement('li');
+    row.className = TASK_CLS.ITEM;
+    const box = document.createElement('input');
+    box.className = TASK_CLS.BOX;
     box.setAttribute('type', 'checkbox');
-    box.id = `${pin.id}-item-${String(itemKey(item, index))}`;
-    const label = makeElement('label', TASK_CLS.LABEL);
+    box.id = `${prefix}-item-${String(itemKey(item, index))}`;
+    const label = document.createElement('label');
+    label.className = TASK_CLS.LABEL;
     label.setAttribute('for', box.id);
-    makeTextNode(label);
+    leadingText(label);
     row.append(box, label);
     return row;
   };
@@ -145,92 +129,63 @@ function updateRow(row, item, index) {
   const label = row.lastElementChild;
   const done = Boolean(item && item.done);
   const text = item && item.text !== undefined && item.text !== null ? item.text : `Item ${index + 1}`;
-
   if (box.checked !== done) box.checked = done;
-  if (label.firstChild) setText(label.firstChild, text);
-  if (row.classList.contains(TASK_CLS.ITEM_DONE) !== done) {
-    row.classList.toggle(TASK_CLS.ITEM_DONE, done);
-  }
+  setText(label.firstChild, text);
+  if (row.classList.contains(TASK_CLS.ITEM_DONE) !== done) row.classList.toggle(TASK_CLS.ITEM_DONE, done);
 }
 
-function build(pin, contentEl) {
-  claimHost(contentEl);
-  const card = makeElement('div', `cloudcanvas-component cloudcanvas-component-card ${TASK_CLS.ROOT}`);
-
-  const header = makeElement('div', TASK_CLS.HEADER);
-  const title = makeElement('div', TASK_CLS.TITLE);
-  const titleText = makeTextNode(title);
-  const priority = makeElement('span', `cloudcanvas-component-chip ${TASK_CLS.PRIORITY}`);
-  const priorityText = makeTextNode(priority);
-  header.append(title, priority);
-
-  const checklist = makeElement('ul', TASK_CLS.CHECKLIST);
-  checklist.addEventListener('change', (event) => onChecklistChange(pin, checklist, event));
-
-  const progress = makeElement('progress', `cloudcanvas-component-meter ${TASK_CLS.PROGRESS}`);
-  progress.setAttribute('max', '100');
-  progress.setAttribute('aria-label', 'Checklist progress');
-
-  card.append(header, checklist, progress);
-  contentEl.replaceChildren(card);
-
-  return { card, titleText, priority, priorityText, checklist, progress, makeRow: makeRow(pin) };
+/** The nodes, and one `change` listener on the list resolving the row it came from. */
+function bind(host, on) {
+  const b = blit(host);
+  const find = (className) => host.querySelector(`.${className}`);
+  const checklist = find(TASK_CLS.CHECKLIST);
+  on(checklist, 'change', (event) => {
+    const index = keyedIndexOf(checklist, event.target, TASK_CLS.ITEM, contentOf(b).items, itemKey);
+    if (index !== -1) toggleTaskItem(b, index);
+  });
+  const priority = find(TASK_CLS.PRIORITY);
+  return {
+    titleText: leadingText(find(TASK_CLS.TITLE)), priority, priorityText: leadingText(priority),
+    checklist, progress: find(TASK_CLS.PROGRESS), makeRow: rowMaker(rowPrefixOf(host))
+  };
 }
 
-function update(pin, contents, bindings, cache) {
+function render(bindings, contents, cache) {
   const priority = priorityOf(contents.get('priority'));
   const items = contents.get('items');
   const list = Array.isArray(items) ? items : [];
-
   setText(bindings.titleText, contents.get('title'));
   setText(bindings.priorityText, priority);
   setAttr(bindings.priority, 'data-priority', priority, cache, 'priority');
-
-  reconcileKeyedList(bindings.checklist, list, {
-    key: itemKey,
-    create: bindings.makeRow,
-    update: updateRow
-  });
-
+  reconcileKeyedList(bindings.checklist, list, { key: itemKey, create: bindings.makeRow, update: updateRow });
   setAttr(bindings.progress, 'value', String(taskProgressOf(list)), cache, 'progress');
-}
-
-/** Seed the progress vector from the items the card was born with. */
-function onAttach(pin) {
-  syncProgress(pin, pin.contents.get('items'));
 }
 
 /* ------------------ REGISTRATION ------------------ */
 
-/** Register the task card, once per registry; see `./registrar.js`. */
-export const registerTaskCard = /* @__PURE__ */ makeRegistrar({
-  name: TASK_CARD_TYPE,
-  build,
-  update,
-  chrome: false,
-  allowedKeys: ALLOWED_KEYS,
-  defaults: { onAttach }
+const SPEC = Object.freeze({
+  name: TASK_CARD_TYPE, html: HTML, keys: ['title', 'priority', 'items', 'assignee', 'progress'], bind, render
 });
 
-/**
- * Create a task card Pin.
- *
- * @param {CloudCanvasSession} session
- * @param {object} [options] `title`, `priority`, `items`, `assignee` become
- *   contents; the rest are Pin options
- * @returns {Pin}
- */
-export function createTaskCardPin(session, options = {}) {
-  const { pinOptions, contents } = splitOptions(options, [
-    ['title', 'Feature Checklist'],
-    ['priority', DEFAULT_PRIORITY],
-    ['items', [
-      { text: 'Initial design review', done: true },
-      { text: 'Refactor core abstractions', done: true },
-      { text: 'Write automated test suite', done: false }
-    ]],
-    ['assignee', 'Engineer']
-  ], { x: 100, y: 100, width: 220, height: 190 });
+/** Define the task card widget, once. @returns {object} its type */
+export function registerTaskCard() {
+  injectComponentStyles();
+  return widget(SPEC);
+}
 
-  return createComponentPin(session, registerTaskCard, pinOptions, contents, false);
+/**
+ * A task card in `parent`. `title`, `priority`, `items`, `assignee` and `progress` (seeded
+ * from the items when absent) are contents; the rest is spec.
+ */
+export function createTaskCard(parent, options = {}) {
+  registerTaskCard();
+  const items = options.items ?? [
+    { text: 'Initial design review', done: true },
+    { text: 'Refactor core abstractions', done: true },
+    { text: 'Write automated test suite', done: false }
+  ];
+  return parent.blit(widgetSpec(TASK_CARD_TYPE, withDefaults({
+    x: 100, y: 100, w: 220, h: 190, chrome: false,
+    title: 'Feature Checklist', priority: DEFAULT_PRIORITY, assignee: 'Engineer', progress: taskProgressOf(items)
+  }, { ...options, items })));
 }

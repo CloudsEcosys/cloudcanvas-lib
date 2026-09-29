@@ -2,42 +2,34 @@
  * CloudCanvas - NeoTec, LLC, Richard Christopher
  * Written by Richard Christopher, Copyright 2026 NeoTec, LLC
  *
- * Chat: a message Pin with reaction toggles, and a composer Pin that adds one.
+ * Chat: a message with reaction toggles, and a composer that adds one.
  *
- * Reactions are real toggle buttons - `aria-pressed` is both the state a
- * screen reader hears and the hook the sheet styles - reconciled by emoji so
- * the button under the pointer is the button that stays. The emoji and the
- * count are text nodes written through `setText`; nothing a caller supplies
- * is ever parsed as markup, which closes the injection the previous
- * `innerHTML` pill left open.
+ *   registerChatMessage(); registerChatInput();
+ *   createChatMessage(channel, { author: 'Ada', text: 'Hi', replyTo: 'msg-1' });
+ *   createChatInput(channel, { placeholder: 'Say it' });   // submit: chat:sent
+ *
+ * Reactions are real toggle buttons - `aria-pressed` is both the state a screen
+ * reader hears and the hook the sheet styles - reconciled by emoji so the button
+ * under the pointer is the button that stays. The emoji and the count are Text
+ * nodes; nothing a caller supplies is ever parsed as markup.
  *
  * A caller-supplied avatar colour is a per-instance value, so it lands as two
  * custom properties the sheet reads - the fill, and a foreground picked by
- * `contrastTextFor` to read on it - exactly as `lib/badge.js` publishes a
- * tone. With no colour supplied the sheet falls back to the badge tokens,
- * which the theme already keeps readable.
+ * `contrastTextFor` to read on it. With no colour the sheet falls back to the
+ * badge tokens. `replyTo` draws a dashed thread through the `connect` trait.
+ * The composer is a `<form>`, so Enter and the Send button reach one `submit`;
+ * it places the message in the container it sits in (its channel).
  */
-
-import {
-  KEY_ATTR,
-  PinEvent,
-  ConnectableTrait,
-  contrastTextFor,
-  makeElement,
-  makeTextNode,
-  reconcileKeyedList,
-  setAttr,
-  setText
-} from '../../.plugin/index.js';
-import {
-  claimHost,
-  createComponentPin,
-  makeRegistrar,
-  splitOptions
-} from './registrar.js';
+import { blit } from '../../.plugin/core/index.js';
+import { connect } from '../../.plugin/addons/connect.js';
+import { reconcileKeyedList } from '../../.plugin/addons/keyed-list.js';
+import { contentOf, leadingText, setAttr, setContent, setText, widget, widgetSpec } from '../../.plugin/addons/widget.js';
+import { contrastTextFor } from '../../.plugin/graphics/primitives/primitives.js';
 import { asText } from '../coerce.js';
+import { keyedIndexOf, withDefaults } from './registrar.js';
+import { injectComponentStyles } from './styles.js';
 
-/** Registry names, and the `type` a caller creates each Pin by. */
+/** The type names. */
 export const CHAT_MESSAGE_TYPE = 'chat-message';
 export const CHAT_INPUT_TYPE = 'chat-input';
 
@@ -59,21 +51,21 @@ export const CHAT_CLS = /* @__PURE__ */ Object.freeze({
   SEND: 'cloudcanvas-chat-send-btn'
 });
 
-/** The events the two widgets transmit, bubbling up the scope chain. */
+/** The events the two widgets emit. */
 export const REACTION_EVENT = 'chat:reaction';
 export const SENT_EVENT = 'chat:sent';
-
-const MESSAGE_KEYS = ['author', 'handle', 'avatarColor', 'time', 'text', 'reactions'];
-const INPUT_KEYS = ['placeholder'];
 
 /** Only a hex colour has a luminance to pick a foreground against. */
 const HEX_COLOR = /^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
 
+/** Where a sent message lands in its channel: below the channel's blits, one row each. */
+const SENT_X = 20;
+const SENT_TOP = 70;
+const SENT_ROW = 85;
+
 /** First letter of each of the first two words, or `U` for nobody. */
 function initialsOf(author) {
-  const initials = asText(author)
-    .trim()
-    .split(/\s+/)
+  const initials = asText(author).trim().split(/\s+/)
     .filter((word) => word.length > 0)
     .slice(0, 2)
     .map((word) => word[0].toUpperCase())
@@ -96,57 +88,66 @@ function reactionKey(reaction, index) {
 /* ------------------ BEHAVIOUR ------------------ */
 
 /**
- * Toggle one reaction, immutably, and announce it.
- *
+ * Toggle one reaction, immutably, and emit `chat:reaction`.
  * @returns {boolean} whether a reaction was toggled
  */
-export function toggleChatReaction(pin, index) {
-  const reactions = pin.contents.get('reactions');
+export function toggleChatReaction(b, index) {
+  const reactions = contentOf(b).reactions;
   if (!Array.isArray(reactions) || !reactions[index]) return false;
-
   const current = reactions[index];
   const count = Number(current.count) || 0;
   const reaction = current.reacted
     ? { ...current, reacted: false, count: Math.max(0, count - 1) }
     : { ...current, reacted: true, count: count + 1 };
-
-  const next = reactions.map((entry, position) => (position === index ? reaction : entry));
-  pin.setContent('reactions', next);
-
-  pin.transmit(new PinEvent(REACTION_EVENT, {
-    payload: { reaction, messageId: pin.id },
-    bubbles: true,
-    source: pin
-  }));
+  setContent(b, 'reactions', reactions.map((entry, position) => (position === index ? reaction : entry)));
+  b.emit(REACTION_EVENT, { reaction, messageId: b.el.id });
   return true;
 }
 
-/** Resolve the pill a click landed on and toggle its reaction. */
-function onReactionClick(pin, container, event) {
-  const target = event.target;
-  const pill = target && typeof target.closest === 'function' ? target.closest(`.${CHAT_CLS.PILL}`) : null;
-  if (!pill || !container.contains(pill)) return;
+/** The container a composer sends into: its parent blit, unless that is the root itself. */
+function channelOf(b) {
+  const parent = b.parent;
+  return parent && !parent.el.hasAttribute('data-blit-root') ? parent : null;
+}
 
-  const reactions = pin.contents.get('reactions');
-  const key = pill.getAttribute(KEY_ATTR);
-  const index = Array.isArray(reactions)
-    ? reactions.findIndex((entry, position) => String(reactionKey(entry, position)) === key)
-    : -1;
-  if (index !== -1) toggleChatReaction(pin, index);
+/**
+ * Add a message to the channel the composer sits in, and emit `chat:sent`.
+ * @returns {object|null} the message blit, or null for empty text or no channel
+ */
+export function sendChatMessage(b, text) {
+  const value = asText(text).trim();
+  if (value === '') return null;
+  const channel = channelOf(b);
+  // Below the channel's existing blits, which include this composer.
+  const message = channel ? createChatMessage(channel, {
+    x: SENT_X, y: SENT_TOP + (channel.blits.length - 1) * SENT_ROW, w: 360, h: 75,
+    author: 'You', handle: '@you', text: value,
+    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  }) : null;
+  b.emit(SENT_EVENT, { text: value, channel: channel ? channel.el.id || null : null });
+  return message;
 }
 
 /* ------------------ MESSAGE TEMPLATE ------------------ */
 
-/** One reaction: a toggle button holding two text nodes. */
+const MESSAGE_HTML = `<article class="cloudcanvas-component cloudcanvas-component-card ${CHAT_CLS.ROOT}">`
+  + `<span class="${CHAT_CLS.AVATAR}" aria-hidden="true"></span>`
+  + `<div class="${CHAT_CLS.CONTENT}"><div class="${CHAT_CLS.META}"><span class="${CHAT_CLS.AUTHOR}"></span>`
+  + `<span class="${CHAT_CLS.TIME}"></span></div><div class="${CHAT_CLS.TEXT}"></div>`
+  + `<div class="${CHAT_CLS.REACTIONS}"></div></div></article>`;
+
+/** One reaction: a toggle button holding two Text nodes. */
 function makePill() {
-  const pill = makeElement('button', CHAT_CLS.PILL);
+  const pill = document.createElement('button');
+  pill.className = CHAT_CLS.PILL;
   pill.setAttribute('type', 'button');
   pill.setAttribute('aria-pressed', 'false');
-  const emoji = makeElement('span', CHAT_CLS.PILL_EMOJI);
-  makeTextNode(emoji);
-  const count = makeElement('span', CHAT_CLS.PILL_COUNT);
-  makeTextNode(count);
-  pill.append(emoji, count);
+  for (const className of [CHAT_CLS.PILL_EMOJI, CHAT_CLS.PILL_COUNT]) {
+    const part = document.createElement('span');
+    part.className = className;
+    leadingText(part);
+    pill.appendChild(part);
+  }
   return pill;
 }
 
@@ -157,181 +158,104 @@ function updatePill(pill, reaction) {
   if (pill.getAttribute('aria-pressed') !== pressed) pill.setAttribute('aria-pressed', pressed);
 }
 
-function buildMessage(pin, contentEl) {
-  claimHost(contentEl);
-  const card = makeElement('article', `cloudcanvas-component cloudcanvas-component-card ${CHAT_CLS.ROOT}`);
-
-  const avatar = makeElement('span', CHAT_CLS.AVATAR);
-  avatar.setAttribute('aria-hidden', 'true');
-  const avatarText = makeTextNode(avatar);
-
-  const content = makeElement('div', CHAT_CLS.CONTENT);
-  const meta = makeElement('div', CHAT_CLS.META);
-  const author = makeElement('span', CHAT_CLS.AUTHOR);
-  const authorText = makeTextNode(author);
-  const time = makeElement('span', CHAT_CLS.TIME);
-  const timeText = makeTextNode(time);
-  meta.append(author, time);
-
-  const text = makeElement('div', CHAT_CLS.TEXT);
-  const bodyText = makeTextNode(text);
-
-  const reactions = makeElement('div', CHAT_CLS.REACTIONS);
-  reactions.addEventListener('click', (event) => onReactionClick(pin, reactions, event));
-
-  content.append(meta, text, reactions);
-  card.append(avatar, content);
-  contentEl.replaceChildren(card);
-
-  return { card, avatar, avatarText, authorText, timeText, bodyText, reactions };
+/** The nodes, and one click listener on the reactions resolving the pill it landed on. */
+function bindMessage(host, on) {
+  const b = blit(host);
+  const find = (className) => host.querySelector(`.${className}`);
+  const reactions = find(CHAT_CLS.REACTIONS);
+  on(reactions, 'click', (event) => {
+    const index = keyedIndexOf(reactions, event.target, CHAT_CLS.PILL, contentOf(b).reactions, reactionKey);
+    if (index !== -1) toggleChatReaction(b, index);
+  });
+  const avatar = find(CHAT_CLS.AVATAR);
+  return {
+    avatar, avatarText: leadingText(avatar), authorText: leadingText(find(CHAT_CLS.AUTHOR)),
+    timeText: leadingText(find(CHAT_CLS.TIME)), bodyText: leadingText(find(CHAT_CLS.TEXT)), reactions
+  };
 }
 
-function updateMessage(pin, contents, bindings, cache) {
+function renderMessage(bindings, contents, cache) {
   const author = asText(contents.get('author'));
   const handle = asText(contents.get('handle'));
   const reactions = contents.get('reactions');
-
   setText(bindings.avatarText, initialsOf(author));
   setAttr(bindings.avatar, 'style', avatarStyle(contents.get('avatarColor')), cache, 'avatarStyle');
   setText(bindings.authorText, handle === '' ? author : `${author} (${handle})`);
   setText(bindings.timeText, contents.get('time'));
   setText(bindings.bodyText, contents.get('text'));
-
   reconcileKeyedList(bindings.reactions, Array.isArray(reactions) ? reactions : [], {
-    key: reactionKey,
-    create: makePill,
-    update: updatePill
+    key: reactionKey, create: makePill, update: updatePill
   });
 }
 
 /* ------------------ COMPOSER TEMPLATE ------------------ */
 
-/**
- * Add a message to the channel the composer sits in, and announce it.
- *
- * @returns {Pin|null} the message Pin, or null when the composer has no channel
- */
-export function sendChatMessage(pin, text) {
-  const value = asText(text).trim();
-  if (value === '') return null;
+const INPUT_HTML = `<form class="cloudcanvas-component cloudcanvas-component-card ${CHAT_CLS.INPUT_BAR}">`
+  + `<input class="${CHAT_CLS.INPUT_FIELD}" type="text" aria-label="Message" autocomplete="off">`
+  + `<button class="cloudcanvas-component-btn ${CHAT_CLS.SEND}" type="submit">Send</button></form>`;
 
-  const session = pin.session;
-  const channel = pin.parent;
-  let message = null;
-  if (session && channel) {
-    // Below the channel's existing children, which include this composer.
-    const count = channel.children ? channel.children.size : 0;
-    message = createChatMessagePin(session, {
-      parent: channel,
-      x: 20,
-      y: 70 + (count - 1) * 85,
-      width: 360,
-      height: 75,
-      author: 'You',
-      handle: '@you',
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      text: value
-    });
-  }
-
-  pin.transmit(new PinEvent(SENT_EVENT, {
-    payload: { text: value, channel: channel ? channel.id : null },
-    bubbles: true,
-    source: pin
-  }));
-  return message;
-}
-
-function buildInput(pin, contentEl) {
-  claimHost(contentEl);
-  const bar = makeElement('form', `cloudcanvas-component cloudcanvas-component-card ${CHAT_CLS.INPUT_BAR}`);
-
-  const field = makeElement('input', CHAT_CLS.INPUT_FIELD);
-  field.setAttribute('type', 'text');
-  field.setAttribute('aria-label', 'Message');
-  field.setAttribute('autocomplete', 'off');
-
-  const send = makeElement('button', `cloudcanvas-component-btn ${CHAT_CLS.SEND}`);
-  send.setAttribute('type', 'submit');
-  send.appendChild(document.createTextNode('Send'));
-
-  // A form gives Enter its native meaning; the submit is what both routes reach.
-  bar.addEventListener('submit', (event) => {
+/** The field, and the form's `submit`: Enter and Send both reach it. */
+function bindInput(host, on) {
+  const b = blit(host);
+  const form = host.querySelector(`.${CHAT_CLS.INPUT_BAR}`);
+  const field = host.querySelector(`.${CHAT_CLS.INPUT_FIELD}`);
+  on(form, 'submit', (event) => {
     event.preventDefault();
-    if (sendChatMessage(pin, field.value)) field.value = '';
+    if (sendChatMessage(b, field.value)) field.value = '';
   });
-
-  bar.append(field, send);
-  contentEl.replaceChildren(bar);
-  return { bar, field, send };
+  return { field };
 }
 
-function updateInput(pin, contents, bindings, cache) {
+function renderInput(bindings, contents, cache) {
   setAttr(bindings.field, 'placeholder', asText(contents.get('placeholder')), cache, 'placeholder');
 }
 
 /* ------------------ REGISTRATION ------------------ */
 
-/** Register the chat message, once per registry; see `./registrar.js`. */
-export const registerChatMessage = /* @__PURE__ */ makeRegistrar({
-  name: CHAT_MESSAGE_TYPE,
-  build: buildMessage,
-  update: updateMessage,
-  chrome: false,
-  allowedKeys: MESSAGE_KEYS
+const MESSAGE_SPEC = Object.freeze({
+  name: CHAT_MESSAGE_TYPE, html: MESSAGE_HTML,
+  keys: ['author', 'handle', 'avatarColor', 'time', 'text', 'reactions'], bind: bindMessage, render: renderMessage
 });
 
-/** Register the composer, once per registry; see `./registrar.js`. */
-export const registerChatInput = /* @__PURE__ */ makeRegistrar({
-  name: CHAT_INPUT_TYPE,
-  build: buildInput,
-  update: updateInput,
-  chrome: false,
-  allowedKeys: INPUT_KEYS
+const INPUT_SPEC = Object.freeze({
+  name: CHAT_INPUT_TYPE, html: INPUT_HTML, keys: ['placeholder'], bind: bindInput, render: renderInput
 });
 
-/**
- * Create a chat message Pin; `replyTo` draws a dashed thread to another message.
- *
- * @param {CloudCanvasSession} session
- * @param {object} [options]
- * @returns {Pin}
- */
-export function createChatMessagePin(session, options = {}) {
-  const { pinOptions, contents } = splitOptions(options, [
-    ['author', 'User'],
-    ['handle', ''],
-    ['avatarColor', ''],
-    ['time', '12:00 PM'],
-    ['text', ''],
-    ['reactions', [
-      { emoji: '👍', count: 1, reacted: false },
-      { emoji: '❤️', count: 2, reacted: false }
-    ]]
-  ], { x: 20, y: 80, width: 360, height: 85 });
+/** Define the chat message widget, once, and name the `connect` trait a reply thread is. @returns {object} its type */
+export function registerChatMessage() {
+  injectComponentStyles();
+  blit.use({ connect });
+  return widget(MESSAGE_SPEC);
+}
 
-  const { replyTo, ...rest } = pinOptions;
-  const traits = Array.isArray(rest.traits) ? [...rest.traits] : [];
-  if (replyTo) {
-    // No stroke stated: the trait's own default is the `--cc-connector` token.
-    traits.push(new ConnectableTrait({ connections: [replyTo], strokeWidth: 2, dashed: true }));
-  }
-  rest.traits = traits;
-
-  return createComponentPin(session, registerChatMessage, rest, contents, false);
+/** Define the composer widget, once. @returns {object} its type */
+export function registerChatInput() {
+  injectComponentStyles();
+  return widget(INPUT_SPEC);
 }
 
 /**
- * Create a composer Pin: fixed, unselectable, chromeless.
- *
- * @param {CloudCanvasSession} session
- * @param {object} [options] `placeholder` becomes content; the rest are Pin options
- * @returns {Pin}
+ * A chat message in `parent`. `author`, `handle`, `avatarColor`, `time`, `text` and
+ * `reactions` are contents; `replyTo` (an id) draws a dashed thread to that message;
+ * the rest is spec.
  */
-export function createChatInputPin(session, options = {}) {
-  const { pinOptions, contents } = splitOptions(options, [
-    ['placeholder', 'Type a message... (Press Enter to send)']
-  ], { x: 20, y: 420, width: 360, height: 48, draggable: false, selectable: false });
+export function createChatMessage(parent, options = {}) {
+  registerChatMessage();
+  const { replyTo, ...rest } = options;
+  // No stroke stated: the trait's own default is the `--cc-connector` token.
+  const thread = replyTo ? { connect: { connections: [replyTo], strokeWidth: 2, dashed: true } } : {};
+  return parent.blit(widgetSpec(CHAT_MESSAGE_TYPE, withDefaults({
+    x: 20, y: 80, w: 360, h: 85, chrome: false,
+    author: 'User', handle: '', avatarColor: '', time: '12:00 PM', text: '',
+    reactions: [{ emoji: '👍', count: 1, reacted: false }, { emoji: '❤️', count: 2, reacted: false }],
+    ...thread
+  }, rest)));
+}
 
-  return createComponentPin(session, registerChatInput, pinOptions, contents, false);
+/** A composer in `parent` (its channel). `placeholder` is content; the rest is spec. */
+export function createChatInput(parent, options = {}) {
+  registerChatInput();
+  return parent.blit(widgetSpec(CHAT_INPUT_TYPE, withDefaults({
+    x: 20, y: 420, w: 360, h: 48, chrome: false, placeholder: 'Type a message... (Press Enter to send)'
+  }, options)));
 }

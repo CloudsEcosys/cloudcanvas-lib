@@ -4,6 +4,8 @@
  *
  * Spinner: an indeterminate busy indicator.
  *
+ *   const busy = createSpinner(app, { x: 40, y: 40, label: 'Fetching results' });
+ *
  * One element and no animation code. `cloudcanvas-lib-spinner` is the contract
  * with `../styles.js`: the border ring, the `@keyframes` rotation, and the
  * `@media (prefers-reduced-motion: reduce)` override that slows the turn to six
@@ -19,7 +21,7 @@
  * which is the only failure mode this widget really has.
  */
 
-import { setAttr } from '../../.plugin/index.js';
+import { setAttr } from '../../.plugin/addons/widget.js';
 import { defineWidget } from './widget.js';
 
 const NAME = 'spinner';
@@ -51,11 +53,8 @@ const widget = /* @__PURE__ */ defineWidget({
   render
 });
 
-/** Register the Spinner Pin component once; a second call returns the same handle. */
-export const registerSpinner = widget.register;
+/** Define the Spinner widget, once. @returns {object} its type */
+export const registerSpinner = widget.define;
 
-/** Create a Spinner Pin on `session`; see `./text.js` on the option order. */
-export const createSpinnerPin = widget.create;
-
-/** The core `spinner` type: `root.blit({ type: 'spinner', spinner: { label } })`. */
-export const spinnerType = widget.define;
+/** A chromeless Spinner blit in `parent`: `createSpinner(app, { x, y, label })`. */
+export const createSpinner = widget.create;

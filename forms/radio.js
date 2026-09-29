@@ -2,36 +2,34 @@
  * CloudCanvas - NeoTec, LLC, Richard Christopher
  * Written by Richard Christopher, Copyright 2026 NeoTec, LLC
  *
- * Radio, and the group Pin that mounts a set of them.
+ * Radio, and the group widget that holds a set of them.
+ *
+ *   const size = createRadioGroup(app, { label: 'Size', group: 'size', value: 'm',
+ *     options: [{ value: 's', label: 'Small' }, { value: 'm', label: 'Medium' }] });
+ *   size.on('change', (event) => console.log(event.detail.payload.value));
  *
  * Mutual exclusion is the platform's, not ours: the `group` content key becomes
  * the native `name` attribute, and the browser deselects every other radio
- * carrying it - across Pin boundaries, because `name` is document-scoped. There
+ * carrying it - across blit boundaries, because `name` is document-scoped. There
  * is no selection logic in this file, and there must never be.
  *
- * What that costs is a model that can go stale: the radio the platform switched
- * off fires no event, so its Pin still believes it is checked. Two answers, both
- * below. The change handler tells its siblings (they are children of one group
- * Pin, which is how it can find them), and the update pass writes `checked` only
- * when the *model* moved - never merely because the DOM disagrees - so
- * re-rendering a stale sibling cannot take the selection back.
+ * What that costs is contents that can go stale: the radio the platform switched
+ * off fires no event, so its contents still say checked. Two answers, both
+ * below. The change handler tells its siblings (`b.parent.blits`), and the render
+ * writes `checked` only when the *contents* moved - never merely because the DOM
+ * disagrees - so re-rendering a stale sibling cannot take the selection back.
  *
- * A consumer listens on the group Pin: `transmit` walks the scope chain, so a
- * child's `change` arrives there with no wiring in the group at all.
+ * A consumer listens on the group: a child's `change` bubbles to it with no
+ * wiring in the group at all. The group's element is its own scope
+ * (`data-scope`), so its radios sit under its caption.
  */
-
-import {
-  defineComponent,
-  makeElement,
-  makeTextNode,
-  setAttr,
-  setText,
-  setVisible,
-  PinEvent
-} from '../../.plugin/index.js';
+import { blit } from '../../.plugin/core/index.js';
+import { contentOf, leadingText, setAttr, setContent, widget, widgetSpec } from '../../.plugin/addons/widget.js';
 import { asText } from '../coerce.js';
+import { injectLibStyles } from '../styles.js';
+import { hostId, linkLabel, renderLabel, setFlag, stopAtControl } from './control.js';
 
-/** Registry names, and the `type`s a caller creates these Pins by. */
+/** The type names. */
 const NAME = 'radio';
 const GROUP_NAME = 'radio-group';
 
@@ -41,173 +39,124 @@ const LABEL_CLASS = 'cloudcanvas-lib-radio-label';
 const GROUP_CLASS = 'cloudcanvas-lib-radio-group';
 const GROUP_LABEL_CLASS = 'cloudcanvas-lib-radio-group-label';
 
-const ALLOWED_KEYS = ['label', 'group', 'value', 'checked', 'disabled'];
-
-/** The group Pin renders one caption; the radios themselves are its child Pins. */
-const GROUP_ALLOWED_KEYS = ['label'];
-
 /**
  * Tell the siblings the platform just deselected.
- * Their DOM is already right; this is only their model catching up.
+ * Their DOM is already right; this is only their contents catching up.
  */
-function deselectSiblings(pin, group) {
-  if (!pin.parent || !group) return;
-
-  for (const sibling of pin.parent.children) {
-    if (sibling === pin || sibling.contents.get('group') !== group) continue;
-    if (sibling.contents.get('checked') === true) sibling.setContent('checked', false);
+function deselectSiblings(b, group) {
+  if (!b.parent || !group) return;
+  for (const sibling of b.parent.blits) {
+    if (sibling === b) continue;
+    const contents = contentOf(sibling);
+    if (contents.group === group && contents.checked === true) setContent(sibling, 'checked', false);
   }
 }
 
-/**
- * Build once: the control, its label, and the change listener.
- *
- * The control's native `input` / `change` stop at the control and are re-issued
- * as the Pin's own event, the way a custom element encapsulates its inner events.
- */
-function build(pin, contentEl) {
-  const root = makeElement('div', ROOT_CLASS);
-
-  const control = makeElement('input', CONTROL_CLASS);
-  control.setAttribute('type', 'radio');
-  control.id = `${pin.id}-control`;
-
-  const label = makeElement('label', LABEL_CLASS);
-  label.setAttribute('for', control.id);
-  const labelText = makeTextNode(label);
-
-  control.addEventListener('change', (event) => {
-    // The control's native event is re-issued as the Pin's own below; it stops
-    // here so a Pin listener hears one `change`, with the payload.
-    event.stopPropagation();
-    // A radio only ever fires `change` on the way in; the one going out is silent.
-    if (!control.checked) return;
-    pin.setContent('checked', true);
-    deselectSiblings(pin, pin.contents.get('group'));
-    pin.transmit(new PinEvent('change', {
-      payload: { value: pin.contents.get('value') },
-      bubbles: true,
-      source: pin
-    }));
-  });
-
-  root.appendChild(control);
-  root.appendChild(label);
-  contentEl.replaceChildren(root);
-
-  return { root, control, label, labelText };
+/** A radio only ever fires `change` on the way in; the one going out is silent. */
+function onChange(b, control, event) {
+  stopAtControl(event);
+  if (!control.checked) return;
+  setContent(b, 'checked', true);
+  const { group, value } = contentOf(b);
+  deselectSiblings(b, group);
+  b.emit('change', { value });
 }
 
-/** Mutate after: the label, the group name and value, and the checked state. */
-function update(pin, contents, bindings, cache) {
+/** The control and its label, named from the blit's element id, and the change listener. */
+function bind(host, on) {
+  const b = blit(host);
+  const root = host.querySelector(`.${ROOT_CLASS}`);
+  const control = root.querySelector(`.${CONTROL_CLASS}`);
+  const label = root.querySelector(`.${LABEL_CLASS}`);
+  linkLabel(host, control, label);
+  on(control, 'change', (event) => onChange(b, control, event));
+  return { root, control, label, labelText: leadingText(label) };
+}
+
+/** The label, the group name and value, and the checked state. */
+function render(bindings, contents, cache) {
   const { control } = bindings;
-
-  const label = contents.get('label');
-  setText(bindings.labelText, label);
-  setVisible(bindings.label, Boolean(label));
-
+  renderLabel(bindings.label, bindings.labelText, contents.get('label'));
   setAttr(control, 'name', asText(contents.get('group')), cache, 'name');
   setAttr(control, 'value', asText(contents.get('value')), cache, 'value');
 
-  // Gated on what this pass last wrote, not on what the DOM now holds: a
-  // sibling's selection legitimately flipped this element without the model
+  // Gated on what this render last wrote, not on what the DOM now holds: a
+  // sibling's selection legitimately flipped this element without the contents
   // moving, and re-asserting it here would undo the user's choice.
   const checked = contents.get('checked') === true;
   if (cache.checked !== checked) {
     cache.checked = checked;
     control.checked = checked;
   }
-
-  const disabled = contents.get('disabled') === true;
-  if (control.disabled !== disabled) control.disabled = disabled;
+  setFlag(control, 'disabled', contents.get('disabled'));
 }
 
-/** The group's own subtree: one optional caption above its scope well of radios. */
-function buildGroup(pin, contentEl) {
-  const root = makeElement('div', GROUP_CLASS);
-  const label = makeElement('span', GROUP_LABEL_CLASS);
-  const labelText = makeTextNode(label);
-  root.appendChild(label);
-  contentEl.replaceChildren(root);
-  return { root, label, labelText };
+/** The group's caption; its radios are its child blits. */
+function bindGroup(host) {
+  const label = host.querySelector(`.${GROUP_LABEL_CLASS}`);
+  return { label, labelText: leadingText(label) };
 }
 
-function updateGroup(pin, contents, bindings) {
-  const label = contents.get('label');
-  setText(bindings.labelText, label);
-  setVisible(bindings.label, Boolean(label));
+function renderGroup(bindings, contents) {
+  renderLabel(bindings.label, bindings.labelText, contents.get('label'));
 }
 
-/** Lazy, memoised registration; see `./button.js` on why it is never at import time. */
-let handle = null;
-let groupHandle = null;
+const SPEC = Object.freeze({
+  name: NAME,
+  html: `<div class="${ROOT_CLASS}"><input class="${CONTROL_CLASS}" type="radio">`
+    + `<label class="${LABEL_CLASS}"></label></div>`,
+  keys: ['label', 'group', 'value', 'checked', 'disabled'],
+  bind,
+  render
+});
 
-/** @returns {{name: string, createTrait: Function}} the component handle */
+const GROUP_SPEC = Object.freeze({
+  name: GROUP_NAME,
+  html: `<div class="${GROUP_CLASS}" data-scope><span class="${GROUP_LABEL_CLASS}"></span></div>`,
+  keys: ['label'],
+  bind: bindGroup,
+  render: renderGroup
+});
+
+/** Define the Radio widget, once. @returns {object} its type */
 export function registerRadio() {
-  if (!handle) {
-    handle = defineComponent({
-      name: NAME,
-      build,
-      update,
-      chrome: false,
-      allowedKeys: ALLOWED_KEYS
-    });
-  }
-  return handle;
+  injectLibStyles();
+  return widget(SPEC);
 }
 
-/** @returns {{name: string, createTrait: Function}} the component handle */
+/** Define the radio group widget, once. @returns {object} its type */
 export function registerRadioGroup() {
-  if (!groupHandle) {
-    groupHandle = defineComponent({
-      name: GROUP_NAME,
-      build: buildGroup,
-      update: updateGroup,
-      chrome: false,
-      allowedKeys: GROUP_ALLOWED_KEYS
-    });
-  }
-  return groupHandle;
+  injectLibStyles();
+  return widget(GROUP_SPEC);
 }
 
-/** Create a single Radio Pin on `session`; see `./text.js` on the option order. */
-export function createRadioPin(session, options = {}) {
+/** A chromeless Radio blit in `parent`; its contents may come flat or as `contents`. */
+export function createRadio(parent, options = {}) {
   registerRadio();
-  return session.createPin({ chrome: false, ...options, type: NAME });
+  return parent.blit(widgetSpec(NAME, { chrome: false, ...options }));
 }
 
 /**
- * Create a group Pin with one child Radio per choice.
+ * A group blit in `parent` with one child Radio per choice.
  *
  * The children share one native `name`, which is the whole of the exclusion. An
- * absent `group` falls back to the group Pin's own id, so two groups on one
- * canvas cannot collide by accident.
+ * absent `group` falls back to one derived from the group's element id, so two
+ * groups on one canvas cannot collide by accident.
  *
- * @param {object} session a CloudCanvasSession
- * @param {object} [config] Pin options for the group, plus:
+ * @param {object} parent a root blit, or any blit
+ * @param {object} [config] the group's spec and `label`, plus:
  * @param {string} [config.group] the native `name` its radios share
  * @param {Array<{value: *, label: string}>} [config.options] the choices
  * @param {*} [config.value] the value of the initially selected choice
- * @returns {object} the group Pin, parent of the radios
+ * @returns {object} the group blit, parent of the radios
  */
-export function createRadioGroupPin(session, config = {}) {
-  const { group, options: choices = [], value, ...pinOptions } = config;
+export function createRadioGroup(parent, config = {}) {
+  const { group, options: choices = [], value, ...spec } = config;
   registerRadioGroup();
-
-  const groupPin = session.createPin({ chrome: false, ...pinOptions, type: GROUP_NAME });
-  const name = group || `${groupPin.id}-group`;
-
+  const groupBlit = parent.blit(widgetSpec(GROUP_NAME, { chrome: false, ...spec }));
+  const name = group || `${hostId(groupBlit.el)}-group`;
   for (const choice of choices) {
-    createRadioPin(session, {
-      parent: groupPin,
-      contents: {
-        label: choice.label,
-        group: name,
-        value: choice.value,
-        checked: choice.value === value
-      }
-    });
+    createRadio(groupBlit, { label: choice.label, group: name, value: choice.value, checked: choice.value === value });
   }
-
-  return groupPin;
+  return groupBlit;
 }

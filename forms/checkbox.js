@@ -2,102 +2,67 @@
  * CloudCanvas - NeoTec, LLC, Richard Christopher
  * Written by Richard Christopher, Copyright 2026 NeoTec, LLC
  *
- * Checkbox: a real `<input type="checkbox">` and its `<label for>`.
+ * Checkbox: a real `<input type="checkbox">` and its `<label for>`, as a widget.
+ *
+ *   registerCheckbox();
+ *   const agree = createCheckbox(app, { x: 40, y: 40, label: 'Agree' });
+ *   agree.on('change', (event) => console.log(event.detail.payload));
  *
  * No edit lock here, unlike `./input.js`: a tick is instantaneous and has no
- * caret to lose, so the native `change` commits straight into `pin.contents`
- * and the next render simply agrees with the DOM.
+ * caret to lose, so the native `change` commits straight into the contents and
+ * the render it causes simply agrees with the DOM.
  *
  * No `aria-checked` either. A native checkbox already publishes its state, and
- * an ARIA attribute would *override* what the element itself reports - including
- * for the frame in which it is still stale. The one widget in this kit that has
- * to write it is `./toggle.js`, and only because it overrides the role.
+ * an ARIA attribute would *override* what the element itself reports. The one
+ * widget in this kit that has to write it is `./toggle.js`, and only because it
+ * overrides the role.
  */
+import { blit } from '../../.plugin/core/index.js';
+import { leadingText, widget, widgetSpec } from '../../.plugin/addons/widget.js';
+import { injectLibStyles } from '../styles.js';
+import { commitOn, linkLabel, renderLabel, setFlag } from './control.js';
 
-import {
-  defineComponent,
-  makeElement,
-  makeTextNode,
-  setText,
-  setVisible,
-  PinEvent
-} from '../../.plugin/index.js';
-
-/** Registry name, and the `type` a caller creates a Pin by. */
+/** The type name. */
 const NAME = 'checkbox';
 
 const ROOT_CLASS = 'cloudcanvas-lib-checkbox';
 const CONTROL_CLASS = 'cloudcanvas-lib-checkbox-control';
 const LABEL_CLASS = 'cloudcanvas-lib-checkbox-label';
 
-/** The content keys a Checkbox accepts; anything else is refused by `setContents`. */
-const ALLOWED_KEYS = ['label', 'checked', 'disabled'];
-
-/**
- * Build once: the control, its label, and the change listener.
- *
- * The control's native `input` / `change` stop at the control and are re-issued
- * as the Pin's own event, the way a custom element encapsulates its inner events.
- */
-function build(pin, contentEl) {
-  const root = makeElement('div', ROOT_CLASS);
-
-  const control = makeElement('input', CONTROL_CLASS);
-  control.setAttribute('type', 'checkbox');
-  control.id = `${pin.id}-control`;
-
-  const label = makeElement('label', LABEL_CLASS);
-  // The id is stable for the life of the Pin, so the association is build-time.
-  label.setAttribute('for', control.id);
-  const labelText = makeTextNode(label);
-
-  control.addEventListener('change', (event) => {
-    // The control's native event is re-issued as the Pin's own below; it stops
-    // here so a Pin listener hears one `change`, with the payload.
-    event.stopPropagation();
-    pin.setContent('checked', control.checked);
-    pin.transmit(new PinEvent('change', { payload: control.checked, bubbles: true, source: pin }));
-  });
-
-  root.appendChild(control);
-  root.appendChild(label);
-  contentEl.replaceChildren(root);
-
-  return { root, control, label, labelText };
+/** The control and its label, named from the blit's element id; the change commits and is re-issued. */
+function bind(host, on) {
+  const root = host.querySelector(`.${ROOT_CLASS}`);
+  const control = root.querySelector(`.${CONTROL_CLASS}`);
+  const label = root.querySelector(`.${LABEL_CLASS}`);
+  linkLabel(host, control, label);
+  commitOn(on, blit(host), control, 'change', 'checked', (element) => element.checked);
+  return { root, control, label, labelText: leadingText(label) };
 }
 
-/** Mutate after: the label text, the checked state, and the disabled flag. */
-function update(pin, contents, bindings) {
-  const label = contents.get('label');
-  setText(bindings.labelText, label);
-  setVisible(bindings.label, Boolean(label));
-
-  const checked = contents.get('checked') === true;
-  if (bindings.control.checked !== checked) bindings.control.checked = checked;
-
-  const disabled = contents.get('disabled') === true;
-  if (bindings.control.disabled !== disabled) bindings.control.disabled = disabled;
+/** The label text, the checked state, and the disabled flag. */
+function render(bindings, contents) {
+  renderLabel(bindings.label, bindings.labelText, contents.get('label'));
+  setFlag(bindings.control, 'checked', contents.get('checked'));
+  setFlag(bindings.control, 'disabled', contents.get('disabled'));
 }
 
-/** Lazy, memoised registration; see `./button.js` on why it is never at import time. */
-let handle = null;
+const SPEC = Object.freeze({
+  name: NAME,
+  html: `<div class="${ROOT_CLASS}"><input class="${CONTROL_CLASS}" type="checkbox">`
+    + `<label class="${LABEL_CLASS}"></label></div>`,
+  keys: ['label', 'checked', 'disabled'],
+  bind,
+  render
+});
 
-/** @returns {{name: string, createTrait: Function}} the component handle */
+/** Define the Checkbox widget, once. @returns {object} its type */
 export function registerCheckbox() {
-  if (!handle) {
-    handle = defineComponent({
-      name: NAME,
-      build,
-      update,
-      chrome: false,
-      allowedKeys: ALLOWED_KEYS
-    });
-  }
-  return handle;
+  injectLibStyles();
+  return widget(SPEC);
 }
 
-/** Create a Checkbox Pin on `session`; see `./text.js` on the option order. */
-export function createCheckboxPin(session, options = {}) {
+/** A chromeless Checkbox blit in `parent`; its contents may come flat or as `contents`. */
+export function createCheckbox(parent, options = {}) {
   registerCheckbox();
-  return session.createPin({ chrome: false, ...options, type: NAME });
+  return parent.blit(widgetSpec(NAME, { chrome: false, ...options }));
 }
