@@ -17,7 +17,7 @@
  *
  *   Spec = { id, x, y, z?, w?, h?, type?, fill?, <trait>: true, reload?, chrome?: boolean,
  *            bordered?: false, layout?, gap?, selectableText?: true, style?, class?,
- *            blits?: Spec[] }
+ *            port?, tint?, blits?: Spec[] }
  *
  * `type` is a registered display type; `fill` is the content by key (a type's text
  * slots, plus any structured value such as a slotted instance's `slots`); a named
@@ -29,7 +29,8 @@
  * empty, so an untouched canvas is the smallest document the format allows. `id` is
  * the element id a root indexes a blit under, and what reactions and pages name.
  * `class` is authored class names (space-separated; never an engine namespace;
- * at most 32 of them, each at most 64 characters).
+ * at most 32 of them, each at most 64 characters). `port` names a registered port
+ * (`gpu`); `tint` is a gpu blit's colour, `#rgb`, `#rrggbb` or `#rrggbbaa`.
  * `pages` and `folders` are one product part, the builder's sitemap: a folder's
  * `parent` and a page's `folder` name a folder id, and one naming a folder that is
  * not there reads as top level; a page's `order` is its rank once the sitemap has

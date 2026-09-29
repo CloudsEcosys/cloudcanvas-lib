@@ -16,7 +16,8 @@
  *     `bordered`, `selectableText`, `layout`, `gap`, the style overrides
  *     in force (`styleMap`) and the authored `class` (recorded in `data-class`)
  *     only when off their default;
- *   - `w`/`h` are the size in force, measured or declared.
+ *   - `w`/`h` are the size in force, measured or declared;
+ *   - `port` and `tint` (a gpu blit's colour, its `data-tint`) whenever set.
  */
 import { blit, type } from '../../.plugin/core/index.js';
 import { styleMap } from '../../.plugin/addons/style.js';
@@ -98,6 +99,7 @@ export function serializeBlit(b) {
   const fill = fillOf(b, spec);
   if (Object.keys(fill).length > 0) node.fill = fill;
   if (spec.port) node.port = spec.port;
+  if (typeof spec.tint === 'string' && spec.tint !== '') node.tint = spec.tint;
   writeTraits(b, spec, node);
   writeSurface(b, spec, node);
 

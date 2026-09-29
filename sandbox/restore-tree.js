@@ -37,8 +37,10 @@
  *     the 32nd kept, and a `class` that is not a string, are dropped too;
  *   - a widget's content key given as a top-level key: contents load only from
  *     `fill`, through the rules above;
- *   - an unregistered type (the blit loads without it), an unknown trait, and any
- *     value its type, trait or the core refuses.
+ *   - a `tint` that is not `#rgb`, `#rrggbb` or `#rrggbbaa`: it rides onto the
+ *     element as `data-tint`, where only a hex colour means anything;
+ *   - an unregistered type or port (the blit loads without it), an unknown trait,
+ *     and any value its type, trait or the core refuses.
  */
 
 /**
@@ -47,7 +49,7 @@
  */
 export const NODE_KEYS = /* @__PURE__ */ Object.freeze([
   'id', 'type', 'x', 'y', 'z', 'w', 'h', 'fill', 'blits', 'reload', 'chrome', 'bordered',
-  'layout', 'gap', 'selectableText', 'style', 'class', 'port', 'with'
+  'layout', 'gap', 'selectableText', 'style', 'class', 'port', 'with', 'tint'
 ]);
 
 /**
@@ -73,7 +75,8 @@ export function restoreTree(api, app, nodes, warnings) {
       maxClasses: 32,
       maxClassLength: 64,
       nodeKeys: ['id', 'type', 'x', 'y', 'z', 'w', 'h', 'fill', 'blits', 'reload', 'chrome', 'bordered',
-        'layout', 'gap', 'selectableText', 'style', 'class', 'port', 'with'],
+        'layout', 'gap', 'selectableText', 'style', 'class', 'port', 'with', 'tint'],
+      tintPattern: /^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i,
       traitAliases: { draggable: 'drag', selectable: 'select', resizable: 'resize', focussable: 'focus',
         connectable: 'connect', 'snap-to-grid': '', scope: '' },
       typeAliases: { select: 'dropdown' }
@@ -89,6 +92,8 @@ export function restoreTree(api, app, nodes, warnings) {
 /** One node and its subtree: made, filled, given its traits, then its children and classes. */
 function restoreNode(context, node, parent) {
   if (!node || typeof node !== 'object' || Array.isArray(node)) return null;
+  // Every warning names the blit by its id: an id that is not text goes first, so no warning can throw.
+  if (node.id !== undefined && typeof node.id !== 'string' && typeof node.id !== 'number') node.id = undefined;
   let b;
   try {
     b = parent.blit(baseOf(context, node));
@@ -120,6 +125,10 @@ function setKey(context, node, b, key, value) {
 /** A node's type under its current name: a type renamed since it was saved loads as what it is now. */
 function typeOf(context, node) {
   const aliases = context.rules.typeAliases;
+  if (node.type !== undefined && typeof node.type !== 'string') {
+    context.warn('blit "' + node.id + '": type is not a name, dropped');
+    return undefined;
+  }
   return Object.prototype.hasOwnProperty.call(aliases, node.type) ? aliases[node.type] : node.type;
 }
 
@@ -137,6 +146,10 @@ function baseOf(context, node) {
   if (node.bordered === false) spec.bordered = false;
   if (node.selectableText === true) spec.selectableText = true;
   if (typeof node.port === 'string' && context.traits.indexOf(node.port) !== -1) spec.port = node.port;
+  else if (typeof node.port === 'string') context.warn('blit "' + node.id + '": port "' + node.port + '" is not registered');
+  else if (node.port !== undefined) context.warn('blit "' + node.id + '": dropped port (not a name)');
+  if (typeof node.tint === 'string' && context.rules.tintPattern.test(node.tint)) spec.tint = node.tint;
+  else if (node.tint !== undefined) context.warn('blit "' + node.id + '": dropped tint (not #rgb, #rrggbb or #rrggbbaa)');
   return spec;
 }
 
