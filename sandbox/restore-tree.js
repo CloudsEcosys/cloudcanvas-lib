@@ -130,7 +130,7 @@ function baseOf(context, node) {
   if (Number(node.h) > 0) spec.h = Number(node.h);
   if (type && context.api.type && context.api.type(type)) spec.type = type;
   else if (type) context.warn('blit "' + node.id + '": type "' + type + '" is not registered');
-  if (node.chrome === false) spec.chrome = false;
+  if (node.chrome === false || node.chrome === true) spec.chrome = node.chrome;
   if (node.bordered === false) spec.bordered = false;
   if (node.selectableText === true) spec.selectableText = true;
   if (typeof node.port === 'string' && context.traits.indexOf(node.port) !== -1) spec.port = node.port;

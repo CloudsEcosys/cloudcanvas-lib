@@ -15,7 +15,7 @@
  *     folders?:   {id, name, parent?}[],         its folders, in order (absent: none)
  *     theme?:     {'--cc-*': value} }            the host's token overrides
  *
- *   Spec = { id, x, y, z?, w?, h?, type?, fill?, <trait>: true, reload?, chrome?: false,
+ *   Spec = { id, x, y, z?, w?, h?, type?, fill?, <trait>: true, reload?, chrome?: boolean,
  *            bordered?: false, layout?, gap?, selectableText?: true, style?, class?,
  *            blits?: Spec[] }
  *
@@ -24,7 +24,7 @@
  * trait is a key set to `true`, as in a core spec; `blits` are the children, in
  * paint order. The remaining keys ride as the `data-*` a core blit would carry.
  * Every key is left out at its default (`z` 0, no size, no fill, `reload`
- * 'active', card surface and border on, `layout` 'free', stylesheet gap, no text
+ * 'active', the type's own card surface, border on, `layout` 'free', stylesheet gap, no text
  * selection, no style, no class, no children) and every session part when it is
  * empty, so an untouched canvas is the smallest document the format allows. `id` is
  * the element id a root indexes a blit under, and what reactions and pages name.

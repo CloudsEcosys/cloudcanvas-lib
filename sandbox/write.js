@@ -12,7 +12,8 @@
  *   - `type` only when it is a registered type;
  *   - `fill` is the contents: a widget's trait options, else the core `fill`;
  *   - a named trait is `name: true`, or `name: options` when it carries them;
- *   - `chrome`, `bordered`, `selectableText`, `layout`, `gap`, the style overrides
+ *   - `chrome` whenever the blit declares it (a type's default surface varies);
+ *     `bordered`, `selectableText`, `layout`, `gap`, the style overrides
  *     in force (`styleMap`) and the authored `class` (recorded in `data-class`)
  *     only when off their default;
  *   - `w`/`h` are the size in force, measured or declared.
@@ -75,7 +76,7 @@ function writeTraits(b, spec, node) {
 
 /** Surface and flow, each only when it differs from the default. */
 function writeSurface(b, spec, node) {
-  if (spec.chrome === 'false') node.chrome = false;
+  if (spec.chrome === 'false' || spec.chrome === 'true') node.chrome = spec.chrome === 'true';
   if (spec.bordered === 'false') node.bordered = false;
   if (spec.layout && spec.layout !== 'free' && spec.layout !== true) node.layout = spec.layout;
   const gap = Number(spec.gap);
