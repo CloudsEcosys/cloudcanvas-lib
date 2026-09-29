@@ -8,10 +8,11 @@
  *   const app = createBoard(host, { label: 'Project board' });
  *   const card = app.blit({ type: 'card', card: { title: 'Hi' }, drag: true, select: true });
  *
- * `createBoard` names the traits (`BOARD_TRAITS`), registers the display
- * widgets, mounts the root with a flying camera, and switches on the root
- * add-ons: pan, the keyboard's single tab stop, the live region, the cursors,
- * history and reactions. Every blit then opts into its own - `drag`, `select`,
+ * `createBoard` names the traits (`BOARD_TRAITS`), puts the board's CSS chunk
+ * in the document (the canvas surface, its type, no text selection), registers
+ * the display widgets, mounts the root with a flying camera, and switches on
+ * the root add-ons: pan, the keyboard's single tab stop, the live region, the
+ * cursors, history and reactions. Every blit then opts into its own - `drag`, `select`,
  * `resize`, `focus`, `connect`, `layout`, `style` and the rest - as spec keys.
  * The menu is the caller's: `menu(app, {registry})`.
  *
@@ -40,6 +41,7 @@ import { select } from '../../.plugin/addons/select.js';
 import { style } from '../../.plugin/addons/style.js';
 import { svgState } from '../../.plugin/addons/svg-state.js';
 import { registerDisplayTypes } from '../../.plugin/addons/types.js';
+import { injectBoardStyles } from '../../.plugin/graphics/styles.js';
 import { contentKeyOf } from '../../.plugin/addons/widget.js';
 import { clearBoardParts } from './board-parts.js';
 
@@ -56,6 +58,7 @@ export const BOARD_TRAITS = /* @__PURE__ */ Object.freeze({
  */
 export function createBoard(host, { label = 'Board' } = {}) {
   blit.use(BOARD_TRAITS);
+  injectBoardStyles();
   registerDisplayTypes();
   const app = blit(host);
   motion(app);

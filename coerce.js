@@ -4,7 +4,7 @@
  *
  * The two content coercions every form and component template shares.
  *
- * A template reads its Pin's contents through these, never through `String()`
+ * A template reads its blit's contents through these, never through `String()`
  * or `Number()` directly, so an absent key and an unparsable value are
  * handled one way across the library: text is the empty string, a number is
  * the template's stated default. One implementation, imported everywhere.

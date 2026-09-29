@@ -2,7 +2,7 @@
  * CloudCanvas - NeoTec, LLC, Richard Christopher
  * Written by Richard Christopher, Copyright 2026 NeoTec, LLC
  *
- * The one-time v1 -> v2 migration: a pure function from the Pin-era snapshot to
+ * The one-time v1 -> v2 migration: a pure function from the 0.4-era snapshot to
  * the blit-spec document (`./format.js`). The loader runs it on every v1 save or
  * export it meets; nothing writes v1 any more.
  *
@@ -20,6 +20,9 @@
  */
 
 import { NODE_KEYS } from './restore-tree.js';
+
+/** The array a v1 document keeps its node tree in. */
+export const V1_NODES_KEY = 'pins';
 
 /** Set `key` on `target` as an own, enumerable data property, whatever the key is. */
 function define(target, key, value) {

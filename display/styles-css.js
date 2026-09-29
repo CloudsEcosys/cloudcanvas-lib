@@ -28,29 +28,29 @@ export const LIB_DISPLAY_CSS = `
  * adjacent regions, and the first (header) region carried in the body text
  * colour and a heavier weight so it reads as the title of the ones below it.
  */
-.cloudcanvas-pin-slots {
+.cloudcanvas-card-slots {
   display: flex;
   flex-direction: column;
 }
 
-.cloudcanvas-pin-slot {
+.cloudcanvas-card-slot {
   display: flex;
   flex-direction: column;
   gap: 2px;
   padding: var(--cc-space-2, 8px) 0;
 }
 
-.cloudcanvas-pin-slot + .cloudcanvas-pin-slot {
+.cloudcanvas-card-slot + .cloudcanvas-card-slot {
   border-top: 1px solid var(--cc-border, #334155);
 }
 
-.cloudcanvas-pin-slot-field {
+.cloudcanvas-card-slot-field {
   color: var(--cc-text-muted, #94a3b8);
   font-size: var(--cc-type-sm, 12px);
   line-height: 1.4;
 }
 
-.cloudcanvas-pin-slot:first-child .cloudcanvas-pin-slot-field {
+.cloudcanvas-card-slot:first-child .cloudcanvas-card-slot-field {
   color: var(--cc-text, #e2e8f0);
   font-weight: var(--cc-weight-semibold, 600);
 }

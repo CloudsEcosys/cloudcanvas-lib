@@ -46,12 +46,6 @@ export const COMPONENTS_CARDS_CSS = `
   box-sizing: inherit;
 }
 
-/* A chromeless widget owns the whole Pin: the content node it is built into
-   is stretched to the box the Pin was given, so the widget fills it. */
-.cloudcanvas-component-host {
-  height: 100%;
-}
-
 .cloudcanvas-component button:focus-visible,
 .cloudcanvas-component input:focus-visible,
 .cloudcanvas-component textarea:focus-visible {
@@ -214,8 +208,8 @@ export const COMPONENTS_CARDS_CSS = `
   height: 14px;
   transform: translateX(-50%);
   border-radius: var(--cc-radius-pill, 9999px);
-  background: var(--cc-sticky-pin, #e11d48);
-  box-shadow: var(--cc-sticky-pin-shadow, 0 2px 4px rgba(0, 0, 0, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.5));
+  background: var(--cc-sticky-pinhead, #e11d48);
+  box-shadow: var(--cc-sticky-pinhead-shadow, 0 2px 4px rgba(0, 0, 0, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.5));
   pointer-events: none;
 }
 

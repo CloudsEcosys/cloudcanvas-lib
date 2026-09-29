@@ -4,7 +4,7 @@
  *
  * The sandbox save format, version 2, and the one door every load goes through.
  *
- * A document is a tree of blit specs - the plain object a core blit's `spec`
+ * A document is a tree of blit specs - the plain object a blit's `spec`
  * getter returns and `root.blit(spec)` consumes - plus the session parts that
  * name blits rather than living in one:
  *
@@ -22,7 +22,7 @@
  * `type` is a registered display type; `fill` is the content by key (a type's text
  * slots, plus any structured value such as a slotted instance's `slots`); a named
  * trait is a key set to `true`, as in a core spec; `blits` are the children, in
- * paint order. The remaining keys ride as the `data-*` a core blit would carry.
+ * paint order. The remaining keys ride as the `data-*` a blit would carry.
  * Every key is left out at its default (`z` 0, no size, no fill, `reload`
  * 'active', the type's own card surface, border on, `layout` 'free', stylesheet gap, no text
  * selection, no style, no class, no children) and every session part when it is
@@ -43,7 +43,7 @@
  */
 
 import { createLogger } from '../../.plugin/log.js';
-import { migrateV1 } from './migrate-v1.js';
+import { V1_NODES_KEY, migrateV1 } from './migrate-v1.js';
 
 const logger = /* @__PURE__ */ createLogger('sandbox/format');
 
@@ -54,7 +54,7 @@ export const SANDBOX_FORMAT_VERSION = 2;
 const LEGACY_VERSION = 1;
 
 /** The array each version keeps its node tree in: the shape a version label promises. */
-const NODES_KEY = /* @__PURE__ */ Object.freeze({ [LEGACY_VERSION]: 'pins', [SANDBOX_FORMAT_VERSION]: 'blits' });
+const NODES_KEY = /* @__PURE__ */ Object.freeze({ [LEGACY_VERSION]: V1_NODES_KEY, [SANDBOX_FORMAT_VERSION]: 'blits' });
 
 /** A document the loader cannot read: not a snapshot, or a version it does not know. */
 export class SandboxFormatError extends TypeError {
@@ -73,7 +73,7 @@ function refuse(message) {
 /**
  * Refuse a document whose shape is not the one its version label promises: its
  * node tree must be the array that version keeps it in. A mislabelled document -
- * a v1 `pins` tree marked version 2, or the reverse - would otherwise restore
+ * a v1 tree marked version 2, or the reverse - would otherwise restore
  * as an empty canvas with no word said.
  */
 function requireShape(data) {

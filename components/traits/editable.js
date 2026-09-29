@@ -34,7 +34,7 @@ export const EDITED_EVENT = 'edited';
 
 /** The title nodes the trait recognises, the display card's first. */
 export const DEFAULT_EDITABLE_SELECTOR = [
-  '.cloudcanvas-pin-title',
+  '.cloudcanvas-card-title',
   '.cloudcanvas-sticky-title',
   '.cloudcanvas-task-title',
   '.cloudcanvas-telemetry-title',

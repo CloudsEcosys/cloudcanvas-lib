@@ -17,7 +17,7 @@
  * (`cloudcanvas-lib-button-primary`, `cloudcanvas-lib-badge-danger`) carried
  * *alongside* the root class; every modifier rule is stated after its base rule,
  * so equal specificity resolves in the modifier's favour. This mirrors the core's
- * `cloudcanvas-pin-*` convention (`CLS` in
+ * `cloudcanvas-card-*` convention (`CLS` in
  * `.plugin/addons/types.js`) at one more level of namespacing,
  * because this layer is separate and optional: a page that never imports it must
  * be unable to collide with it.

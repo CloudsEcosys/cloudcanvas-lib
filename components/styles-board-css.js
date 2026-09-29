@@ -145,8 +145,8 @@ export const COMPONENTS_BOARD_CSS = `
 
 /* ------------------ WORKSPACE GROUP ------------------ */
 
-/* The one widget that keeps the Pin's own card: it is a scope, and the well
-   its children sit in is the core's. So no surface here, only a header. */
+/* The one widget that holds blits: its children sit in its own scope, placed
+   by the core, under the shared card surface. So no surface here, only a header. */
 .cloudcanvas-workspace-card {
   display: flex;
   flex-direction: column;
