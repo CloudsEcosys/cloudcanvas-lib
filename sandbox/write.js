@@ -5,9 +5,9 @@
  * The writer: a live board out to a v2 document (`./format.js`).
  *
  * A node is read off its blit's `spec` - the keys the blit carries - and
- * reshaped into the format's order and defaults. Children are the blits
- * directly inside, in document order (which is paint order), an offloaded one
- * read through its anchor so it is saved where it sits.
+ * reshaped into the format's order and defaults. Children are `b.blits`: the
+ * blits directly inside, in document order (which is paint order), an offloaded
+ * one included where it sits.
  *
  *   - `type` only when it is a registered type;
  *   - `fill` is the contents: a widget's trait options, else the core `fill`;
@@ -19,7 +19,6 @@
  *   - `w`/`h` are the size in force, measured or declared.
  */
 import { blit, type } from '../../.plugin/core/index.js';
-import { parkedStateOf } from '../../.plugin/addons/offload.js';
 import { styleMap } from '../../.plugin/addons/style.js';
 import { contentKeyOf } from '../../.plugin/addons/widget.js';
 import { createLogger } from '../../.plugin/log.js';
@@ -32,20 +31,6 @@ const logger = /* @__PURE__ */ createLogger('sandbox/write');
 
 /** Spec keys the node gives a place of its own, never written as traits. */
 const OWN_KEYS = /* @__PURE__ */ new Set([...NODE_KEYS, 'editing']);
-
-/** The blits directly inside `node`, parked ones included, in document order. */
-export function childrenOf(node, out = []) {
-  for (const child of node.childNodes) {
-    if (child.nodeType === 8) {
-      const parked = parkedStateOf(child);
-      if (parked?.handle) out.push(parked.handle);
-    } else if (child.nodeType === 1) {
-      if (child.hasAttribute('data-blit')) out.push(blit(child));
-      else childrenOf(child, out);
-    }
-  }
-  return out;
-}
 
 /** The contents as a plain, JSON-safe object; prototype keys are never written. */
 function fillOf(b, spec) {
@@ -116,7 +101,7 @@ export function serializeBlit(b) {
   writeTraits(b, spec, node);
   writeSurface(b, spec, node);
 
-  const children = childrenOf(b.el).map(serializeBlit);
+  const children = b.blits.map(serializeBlit);
   if (children.length > 0) node.blits = children;
   return node;
 }
@@ -128,7 +113,7 @@ export function serializeBlit(b) {
  */
 export function serializeBoard(app) {
   if (!app || typeof app.find !== 'function') throw new TypeError('serializeBoard: a root blit is required');
-  const saved = { version: SANDBOX_FORMAT_VERSION, blits: childrenOf(app.el).map(serializeBlit) };
+  const saved = { version: SANDBOX_FORMAT_VERSION, blits: app.blits.map(serializeBlit) };
   writeBoardParts(app, saved);
   return saved;
 }

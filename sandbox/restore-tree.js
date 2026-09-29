@@ -9,7 +9,7 @@
  * keeping a second copy that drifts. So each function in {@link LOADER_FUNCTIONS}
  * may reference only its own arguments and the other functions in that list: no
  * import, no module-scope constant, no closure. Every engine dependency arrives
- * through `api` - `{blit, type, contentKey, safeUrl}` - and every rule is a literal
+ * through `api` - `{blit, type, contentKey, contentKeys, safeUrl}` - and every rule is a literal
  * inside `restoreTree`; a unit test holds those literals equal to the exported
  * constants (`./reserved-keys.js`, {@link NODE_KEYS}) and the file:// browser test
  * runs them.
@@ -35,6 +35,8 @@
  *     claims one of the engine's own namespaces (`cloudcanvas-`, `cc-`, `is-`): a
  *     saved board may style a blit, never forge its engine state; every name past
  *     the 32nd kept, and a `class` that is not a string, are dropped too;
+ *   - a widget's content key given as a top-level key: contents load only from
+ *     `fill`, through the rules above;
  *   - an unregistered type (the blit loads without it), an unknown trait, and any
  *     value its type, trait or the core refuses.
  */
@@ -78,6 +80,7 @@ export function restoreTree(api, app, nodes, warnings) {
     }
   };
   context.traits = context.api.blit ? context.api.blit.use() : [];
+  context.contentKeys = context.api.contentKeys ? context.api.contentKeys() : [];
   return (Array.isArray(nodes) ? nodes : [])
     .map(function (node) { return restoreNode(context, node, app); })
     .filter(Boolean);
@@ -159,6 +162,11 @@ function traitsOf(context, node) {
     if (rules.prototypeKeys.indexOf(key) !== -1) { context.warn('blit "' + node.id + '": dropped reserved key "' + key + '"'); continue; }
     const name = Object.prototype.hasOwnProperty.call(rules.traitAliases, key) ? rules.traitAliases[key] : key;
     if (name === '') continue;
+    if (context.contentKeys.indexOf(name) !== -1) {
+      // Contents arrive only through `fill`, where the reserved-key strip runs; a widget key here would skip it.
+      context.warn('blit "' + node.id + '": dropped "' + key + '" (contents belong in fill)');
+      continue;
+    }
     if (context.traits.indexOf(name) !== -1) out.push([name, value]);
     else context.warn('blit "' + node.id + '": trait "' + key + '" is not registered');
   }

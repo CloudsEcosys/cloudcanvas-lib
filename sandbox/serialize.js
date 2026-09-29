@@ -17,7 +17,7 @@
  * This module is the read path that ties them together, and re-exports the rest.
  */
 import { blit, type } from '../../.plugin/core/index.js';
-import { contentKeyOf } from '../../.plugin/addons/widget.js';
+import { contentKeyOf, contentKeys } from '../../.plugin/addons/widget.js';
 import { safeUrl } from '../../.plugin/graphics/primitives/primitives.js';
 import { readDocument } from './format.js';
 import { restoreTree } from './restore-tree.js';
@@ -35,7 +35,7 @@ export function contentKeyOfType(name) {
 }
 
 /** What the loader needs from the engine, the same surface an exported page's bundle provides. */
-export const LOADER_API = /* @__PURE__ */ Object.freeze({ blit, type, contentKey: contentKeyOfType, safeUrl });
+export const LOADER_API = /* @__PURE__ */ Object.freeze({ blit, type, contentKey: contentKeyOfType, contentKeys, safeUrl });
 
 /**
  * Rebuild a snapshot onto a board: the tree first, then the board parts that

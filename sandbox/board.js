@@ -71,9 +71,12 @@ export function cameraOf(app) {
   return motion(app);
 }
 
-/** Every blit on the board, in document order; the root itself is not one. */
+/** Every blit on the board, depth first in document order, offloaded ones included; the root itself is not one. */
 export function allBlits(app) {
-  return Array.from(app.el.querySelectorAll('[data-blit]'), (element) => blit(element));
+  const out = [];
+  const walk = (b) => { for (const child of b.blits) { out.push(child); walk(child); } };
+  walk(app);
+  return out;
 }
 
 /** An id no blit on the board carries yet: `prefix_` and eight base-36 characters. */

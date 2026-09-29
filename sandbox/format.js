@@ -39,7 +39,7 @@
  * Not stored: camera, trait state beyond a name, physics and vectors, and custom
  * type definitions (a global library of their own; an instance carries what it
  * needs in `fill`). Written by `./write.js`, loaded by `./restore-tree.js` and
- * `./session-parts.js`; v1 is migrated on load by `./migrate-v1.js`.
+ * `./board-parts.js`; v1 is migrated on load by `./migrate-v1.js`.
  */
 
 import { createLogger } from '../../.plugin/log.js';

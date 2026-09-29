@@ -41,7 +41,7 @@
  */
 
 import { readDocument } from './format.js';
-import { LOADER_FUNCTIONS } from './restore-tree.js';
+import { LOADER_FUNCTIONS, restoreTree } from './restore-tree.js';
 import { serializeBoard } from './write.js';
 import { createZip, downloadZip } from './zip.js';
 
@@ -152,7 +152,8 @@ function bootScript() {
     '    var warnings = [];',
     '    CC.registerKit();',
     `    var app = CC.createBoard(document.getElementById(${JSON.stringify(ROOT_ID)}), { label: document.title });`,
-    '    restoreTree(CC.loaderApi, app, data.blits, warnings);',
+    // Called by the name the embedded source carries now: a bundler may have renamed (or minified) it.
+    `    ${restoreTree.name}(CC.loaderApi, app, data.blits, warnings);`,
     '    CC.reactionsOf(app).load(data.reactions, { exists: function (id) { return Boolean(app.find(id)); } });',
     '    if (data.theme) CC.applyTheme(app.el, data.theme);',
     '    var home = (data.pages || []).filter(function (page) { return page.home; })[0];',
