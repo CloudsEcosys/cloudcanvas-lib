@@ -26,17 +26,11 @@
  * convention on both shells: a cancellable `dismiss` event whose default action -
  * removing the widget - a listener stops with `preventDefault()`.
  */
-import { blit, type } from '../../.plugin/core/index.js';
-import { deferRender } from '../../.plugin/addons/edit.js';
+import { widget } from '../../.plugin/addons/widget.js';
 import { PinEvent, defineComponent } from '../../.plugin/index.js';
 import { injectLibStyles } from '../styles.js';
 
-/** The empty Text node leading `element`, made on first bind: the write target `setText` updates. */
-export function leadingText(element) {
-  const first = element.firstChild;
-  if (first && first.nodeType === 3) return first;
-  return element.insertBefore(document.createTextNode(''), first);
-}
+export { leadingText } from '../../.plugin/addons/widget.js';
 
 /** On a Pin: transmit a cancellable `dismiss`, then remove the Pin unless a listener said not to. */
 function dismissPin(pin) {
@@ -49,46 +43,9 @@ function dismissPin(pin) {
   return true;
 }
 
-/** On a blit: emit a cancellable `dismiss`, then remove the blit unless a listener said not to. */
-function dismissBlit(b) {
-  if (b.emit('dismiss').defaultPrevented) return false;
-  b.remove();
-  return true;
-}
-
 /** A Pin's listeners live as long as its subtree. */
 function listenForever(target, eventType, listener) {
   target.addEventListener(eventType, listener);
-}
-
-/** A trait's options as contents: none is empty; a key the widget does not have is refused. */
-function contentsOf(name, keys, options) {
-  if (options === true || options === undefined || options === null || options === '') return new Map();
-  if (typeof options !== 'object' || Array.isArray(options)) {
-    throw new TypeError(`${name}: expected {key: value} contents`);
-  }
-  for (const key of Object.keys(options)) {
-    if (!keys.has(key)) throw new TypeError(`${name}: key "${key}" not permitted`);
-  }
-  return new Map(Object.entries(options));
-}
-
-/** The widget as a core trait: bind the blit's clone, render its options (deferred while edited), stop listening on cleanup. */
-function coreTrait({ name, bind, render }, keys) {
-  return (b, options) => {
-    const contents = contentsOf(name, keys, options);
-    injectLibStyles();
-    const offs = [];
-    const on = (target, eventType, listener) => {
-      target.addEventListener(eventType, listener);
-      offs.push(() => target.removeEventListener(eventType, listener));
-    };
-    const bindings = bind(b.el, on, () => dismissBlit(b));
-    // An open edit (`cloudcanvas/edit`) defers the render; `end` replays the last one, once.
-    const paint = () => render(bindings, contents, {});
-    if (!deferRender(b, paint)) paint();
-    return () => { for (const off of offs) off(); };
-  };
 }
 
 /**
@@ -131,11 +88,11 @@ export function defineWidget(spec) {
     return session.createPin({ chrome: false, ...options, type: name });
   }
 
-  /** The core type, and its same-named trait, registered once. @returns {object} the type's potential blit */
+  /** The core widget (`cloudcanvas/widget`): its type and same-named trait, once. @returns {object} its potential blit */
   function define() {
     if (!defined) {
-      blit.use({ [name]: coreTrait(spec, new Set(allowedKeys)) });
-      defined = type(name, { template: templateOf(), defaults: { [name]: true } });
+      injectLibStyles();
+      defined = widget({ name, html, keys: allowedKeys, bind, render });
     }
     return defined;
   }
