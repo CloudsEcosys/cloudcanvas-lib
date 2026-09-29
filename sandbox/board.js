@@ -13,7 +13,9 @@
  * the display widgets, mounts the root with a flying camera, and switches on
  * the root add-ons: pan, the keyboard's single tab stop, the live region, the
  * cursors, history and reactions. Every blit then opts into its own - `drag`, `select`,
- * `resize`, `focus`, `connect`, `layout`, `style` and the rest - as spec keys.
+ * `resize`, `focus`, `connect`, `layout`, `style`, `sprite` and the rest - as spec keys.
+ * A `sprite` carries its sheet inline (`cloudcanvas/sprites`), so a saved board, a
+ * reload and an exported page all show it as the element's CSS background.
  * The menu is the caller's: `menu(app, {registry})`.
  *
  *   allBlits(app)        every blit on the board, in document order
@@ -38,6 +40,7 @@ import { pan } from '../../.plugin/addons/pan.js';
 import { reactions } from '../../.plugin/addons/reactions.js';
 import { resize } from '../../.plugin/addons/resize.js';
 import { select } from '../../.plugin/addons/select.js';
+import { sprite } from '../../.plugin/addons/sprites.js';
 import { style } from '../../.plugin/addons/style.js';
 import { svgState } from '../../.plugin/addons/svg-state.js';
 import { registerDisplayTypes } from '../../.plugin/addons/types.js';
@@ -47,7 +50,7 @@ import { clearBoardParts } from './board-parts.js';
 
 /** The traits a board names, blit and root alike. */
 export const BOARD_TRAITS = /* @__PURE__ */ Object.freeze({
-  drag, select, resize, focus, connect, edit, layout, gap, style, offload, svgState,
+  drag, select, resize, focus, connect, edit, layout, gap, style, offload, svgState, sprite,
   pan, keyboard, announce, cursors, history, reactions
 });
 
