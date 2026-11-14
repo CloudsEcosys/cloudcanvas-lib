@@ -1,0 +1,210 @@
+{
+  "minimal+drag": {
+    "min": 24470,
+    "gzip": 9480
+  },
+  "minimal+pan": {
+    "min": 25151,
+    "gzip": 9684
+  },
+  "minimal+menu": {
+    "min": 32554,
+    "gzip": 12021
+  },
+  "index": {
+    "min": 64548,
+    "gzip": 19950
+  },
+  "forms": {
+    "min": 54039,
+    "gzip": 16380
+  },
+  "display": {
+    "min": 54198,
+    "gzip": 17120
+  },
+  "components": {
+    "min": 88519,
+    "gzip": 27528
+  },
+  "archetypes": {
+    "min": 23192,
+    "gzip": 8967
+  },
+  "sandbox": {
+    "min": 135780,
+    "gzip": 46737
+  },
+  "ui": {
+    "min": 299231,
+    "gzip": 80849
+  },
+  "ui/testing": {
+    "min": 5707,
+    "gzip": 2239
+  },
+  "defaults": {
+    "min": 131646,
+    "gzip": 45030
+  },
+  "graphics": {
+    "min": 29684,
+    "gzip": 7162
+  },
+  "drag": {
+    "min": 4981,
+    "gzip": 2069
+  },
+  "select": {
+    "min": 2603,
+    "gzip": 1226
+  },
+  "resize": {
+    "min": 8746,
+    "gzip": 3264
+  },
+  "focus": {
+    "min": 3308,
+    "gzip": 1483
+  },
+  "physics": {
+    "min": 2127,
+    "gzip": 1031
+  },
+  "connect": {
+    "min": 7737,
+    "gzip": 3439
+  },
+  "svg-state": {
+    "min": 12192,
+    "gzip": 4870
+  },
+  "cursors": {
+    "min": 10723,
+    "gzip": 4467
+  },
+  "pan": {
+    "min": 6760,
+    "gzip": 2878
+  },
+  "keyboard": {
+    "min": 5361,
+    "gzip": 2415
+  },
+  "menu": {
+    "min": 13140,
+    "gzip": 4843
+  },
+  "announce": {
+    "min": 2610,
+    "gzip": 1298
+  },
+  "observe": {
+    "min": 20886,
+    "gzip": 8231
+  },
+  "motion": {
+    "min": 7118,
+    "gzip": 2900
+  },
+  "types": {
+    "min": 37006,
+    "gzip": 13683
+  },
+  "widget": {
+    "min": 23565,
+    "gzip": 9109
+  },
+  "keyed-list": {
+    "min": 1182,
+    "gzip": 568
+  },
+  "style": {
+    "min": 4357,
+    "gzip": 1634
+  },
+  "layout": {
+    "min": 10114,
+    "gzip": 4234
+  },
+  "edit": {
+    "min": 964,
+    "gzip": 490
+  },
+  "place": {
+    "min": 23324,
+    "gzip": 9132
+  },
+  "history": {
+    "min": 22064,
+    "gzip": 8582
+  },
+  "reactions": {
+    "min": 34541,
+    "gzip": 12569
+  },
+  "lazy": {
+    "min": 1499,
+    "gzip": 741
+  },
+  "offload": {
+    "min": 3212,
+    "gzip": 1575
+  },
+  "gpu": {
+    "min": 15734,
+    "gzip": 6639
+  },
+  "orbit": {
+    "min": 1908,
+    "gzip": 992
+  },
+  "mesh": {
+    "min": 2634,
+    "gzip": 1307
+  },
+  "svg-path": {
+    "min": 21046,
+    "gzip": 8753
+  },
+  "sprites": {
+    "min": 5210,
+    "gzip": 2585
+  },
+  "text": {
+    "min": 3862,
+    "gzip": 2125
+  },
+  "video": {
+    "min": 3072,
+    "gzip": 1643
+  },
+  "own-canvas": {
+    "min": 2694,
+    "gzip": 1363
+  },
+  "xml": {
+    "min": 3621,
+    "gzip": 1790
+  },
+  "html-canvas": {
+    "min": 2393,
+    "gzip": 1125
+  },
+  "panel": {
+    "min": 71691,
+    "gzip": 24336
+  },
+  "+webgl2": {
+    "min": 9683,
+    "gzip": 3874
+  },
+  "+webgpu": {
+    "min": 12712,
+    "gzip": 4847
+  },
+  "+panel-window": {
+    "min": 2663,
+    "gzip": 1196
+  }
+}
