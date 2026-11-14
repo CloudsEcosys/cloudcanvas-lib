@@ -58,7 +58,8 @@
   },
   "sideEffects": [
     "./defaults.js",
-    "./dist/cloudcanvas*.js"
+    "./dist/cloudcanvas*.js",
+    "./dist/esm/defaults.js"
   ],
   "files": [
     "index.js",

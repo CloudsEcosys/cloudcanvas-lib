@@ -150,6 +150,11 @@ test('sideEffects - only the defaults register on import: a bare entry import is
   assert.deepEqual(manifest.sideEffects.filter((pattern) => !pattern.startsWith('./dist/')), ['./defaults.js']);
 });
 
+test('sideEffects - the built defaults (dist/esm) keep their registrations; a built add-on imported unused is 0 bytes', async () => {
+  assert.ok((await bundle(`import '${manifest.name}/dist/esm/defaults.js';`)).length > 0, 'dist/esm/defaults.js was shaken out');
+  assert.equal((await bundle(`import '${manifest.name}/dist/esm/drag.js';`)).length, 0, 'dist/esm/drag.js kept code');
+});
+
 test('sideEffects - the archetypes register by a call and import only the core: an unused import is 0 bytes', async () => {
   const widgetDirs = ['./archetypes/', './components/', './display/', './forms/', './sandbox/'];
   assert.ok(!manifest.sideEffects.some((pattern) => widgetDirs.some((dir) => pattern.startsWith(dir))), 'a widget module declares an import side effect');
