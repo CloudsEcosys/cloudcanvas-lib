@@ -110,7 +110,7 @@ theme, tokens and primitives they read are the core's (`cloudcanvas/theme`, `clo
 
 ## Bundles
 
-`npm run build` writes `dist/`: `esm/<entry>.js` for every entry above (shared code in `esm/chunk-*.js`, the
+`npm run build:dist` writes `dist/`: `esm/<entry>.js` for every entry above (shared code in `esm/chunk-*.js`, the
 core imported by specifier, so a page needs an import map for `cloudcanvas`), `cloudcanvas-lib.esm.js` (the kit)
 and `cloudcanvas-ui.esm.js` (the UI kit), both with the core external, and `cloudcanvas.board.iife.js`, the
 self-contained board runtime a static export loads from `file://`.

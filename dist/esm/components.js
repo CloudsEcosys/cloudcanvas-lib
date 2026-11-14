@@ -1,9 +1,9 @@
 /*!
- * CloudCanvas lib v0.7.0 - CloudCanvas plugins: every add-on, the UI kit and the widgets, one entry each
+ * CloudCanvas lib v0.7.1 - CloudCanvas plugins: every add-on, the UI kit and the widgets, one entry each
  * Written by Richard Christopher, Copyright 2026 NeoTec, LLC
  * MIT License. https://github.com/CloudsEcosys/cloudcanvas-lib#readme
  */
-import{a as E,b as R}from"./chunk-NU5VWAJI.js";import{b as Se,c as Ce}from"./chunk-NLBXN4ZK.js";import{i as D}from"./chunk-KP67IE2J.js";import{f as M}from"./chunk-34JZ4F2Z.js";import"./chunk-I4CIJRQK.js";import"./chunk-ROQVRMHD.js";import{a as s,b as C,c as u,e as i,f as v,j as Oe,k as y,l as L,m as N,n as f}from"./chunk-6VMVX735.js";import{c as ke,e as _,f as I}from"./chunk-7G5NBAEW.js";import{a as Ae,b as P}from"./chunk-IT2G5KV5.js";import{blit as rc}from"cloudcanvas";import{blit as kt}from"cloudcanvas";var Re=`
+import{a as E,b as R}from"./chunk-VOZFMESQ.js";import{b as Se,c as Ce}from"./chunk-QSVXIBUE.js";import{i as D}from"./chunk-BRVWKQTL.js";import{f as M}from"./chunk-IOF743KE.js";import"./chunk-4TAQWWHY.js";import"./chunk-6ASDR6O6.js";import{a as s,b as C,c as u,e as i,f as v,j as Oe,k as y,l as L,m as N,n as f}from"./chunk-T6Z33S5T.js";import{c as ke,e as _,f as I}from"./chunk-RH5IHBE6.js";import{a as Ae,b as P}from"./chunk-JSSN4ILA.js";import{blit as rc}from"cloudcanvas";import{blit as kt}from"cloudcanvas";var Re=`
 /* ------------------ FOUNDATION ------------------ */
 
 .cloudcanvas-component {

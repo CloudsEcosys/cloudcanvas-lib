@@ -5,6 +5,17 @@ All notable changes to `cloudcanvas-lib`. Versions follow semantic versioning; t
 surface, not the commit history. Releases before 0.7.0, when these files shipped inside the `cloudcanvas`
 package, are recorded in [the cloudcanvas CHANGELOG](https://github.com/CloudsEcosys/cloudcanvas/blob/main/CHANGELOG.md).
 
+## 0.7.1
+
+### Fixed
+
+- The `build` script is now `build:dist`. npm prepares a git dependency that declares `build` by running a
+  full `npm install` in the clone, devDependencies included; `dist/` is committed, so nothing needs preparing,
+  and a package depending on this one by git no longer fails or pulls the test toolchain.
+- The development checkout depends on `cloudcanvas` by git at its tag, and `.npmrc` sets `allow-git=all`:
+  npm 12's `allow-git=root` refuses a git dependency declared in `package.json` during a plain `npm install`
+  or `npm ci`. The only git dependencies in the tree are the CloudCanvas repositories.
+
 ## 0.7.0
 
 The split release. `cloudcanvas-lib` is the package every CloudCanvas plugin is pulled from, one entry each,

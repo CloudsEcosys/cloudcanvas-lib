@@ -1,0 +1,6 @@
+/*!
+ * CloudCanvas lib v0.7.1 - CloudCanvas plugins: every add-on, the UI kit and the widgets, one entry each
+ * Written by Richard Christopher, Copyright 2026 NeoTec, LLC
+ * MIT License. https://github.com/CloudsEcosys/cloudcanvas-lib#readme
+ */
+import{o as s}from"./chunk-4TAQWWHY.js";function u(t){return{options:t,floatDrift:t.floatDrift!==void 0?!!t.floatDrift:!0,driftIntensity:t.driftIntensity!==void 0?Number(t.driftIntensity):.4}}function x(t,n,i,e,f=Date.now()){let r=f*.002;return{fx:Math.sin(r+n*.01+e)*t.driftIntensity,fy:Math.cos(r+i*.01+e)*t.driftIntensity}}function o(t,n,i){t.pinned||(t.vx+=n/t.mass,t.vy+=i/t.mass)}function m(t,n=1){if(t.pinned){t.vx=0,t.vy=0;return}t.x+=t.vx*n,t.y+=t.vy*n;let i=Math.pow(t.friction,n);t.vx*=i,t.vy*=i,Math.abs(t.vx)<.001&&(t.vx=0),Math.abs(t.vy)<.001&&(t.vy=0)}function v(t,n){let i=t.options,e={x:n.x,y:n.y,vx:0,vy:0,mass:Number(i.mass)>0?Number(i.mass):1,friction:i.friction!==void 0?Number(i.friction):.92,pinned:!1},f=Number(i.vector)||0;return n.tick(r=>{if(!t.floatDrift||!n.el.isConnected)return;let{fx:a,fy:c}=x(t,n.x,n.y,f);o(e,a*r.dt,c*r.dt),e.x=n.x,e.y=n.y,m(e,r.dt),(e.x!==n.x||e.y!==n.y)&&n.set({x:e.x,y:e.y})},"read")}var y=s({init:u,mount:v});export{x as a,o as b,m as c,y as d};
