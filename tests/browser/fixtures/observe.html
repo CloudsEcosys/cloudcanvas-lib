@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<!-- Written by Richard Christopher, Copyright 2026 NeoTec, LLC -->
+<!--
+  The observe add-on on a core root: #app declares `data-observe`, so markup the
+  suite writes with plain DOM calls joins the root, placed and selectable.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CloudCanvas - observe fixture</title>
+  <style>
+    body { margin: 0; font-family: system-ui, sans-serif; }
+    #app { position: absolute; inset: 0; background: #0f1117; }
+    .card { width: 120px; height: 80px; background: #1e293b; user-select: none; }
+    .card.is-selected { outline: 2px solid #38bdf8; }
+  </style>
+</head>
+<body>
+  <div id="app" data-observe></div>
+
+  <script type="module">
+    import { blit } from 'cloudcanvas';
+    import { observe } from '../../../plugins/observe.js';
+    import { select } from '../../../plugins/select.js';
+
+    blit.use({ observe, select });
+    window.cloudcanvas = blit('#app');
+  </script>
+</body>
+</html>

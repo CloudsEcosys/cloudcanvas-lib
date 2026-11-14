@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<!-- Written by Richard Christopher, Copyright 2026 NeoTec, LLC -->
+<!--
+  The completeness fixture: a page with no stylesheet of any kind.
+
+  Everything visible here comes from the chunks the board and its add-ons
+  inject (the core sheet, the board, the display widgets, layout, pan, drag and
+  select). If a widget ever loses its default rule, an inline style creeps back
+  into a template, or a gesture starts selecting page text again, this page is
+  where it shows: `bare.test.js` reads computed styles and real gestures off it
+  and asserts they are the board's, not the user agent's.
+
+  The host's inline position is layout scaffolding for the viewport box.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CloudCanvas - bare page</title>
+</head>
+<body>
+  <div id="bare-host" style="position: absolute; inset: 0;"></div>
+
+  <script type="module">
+    import { stateOf } from 'cloudcanvas/kernel';
+    import { focusBlit } from '../../../plugins/focus.js';
+    import { CLS } from '../../../plugins/types.js';
+    import { LIGHT_THEME, applyTheme } from 'cloudcanvas/theme';
+    import { createBoard } from '../../../sandbox/board.js';
+
+    const app = createBoard('#bare-host', { label: 'Bare board' });
+
+    const scope = app.blit({
+      id: 'bare_scope', type: 'card', x: 40, y: 40, w: 320, focus: {}, drag: true, select: true,
+      card: { title: 'Bare Scope', body: 'No consumer CSS exists on this page.', badge: { text: 'Scope', color: '#a855f7' } }
+    });
+
+    scope.blit({
+      id: 'bare_card', type: 'card', x: 16, y: 16, w: 260, drag: true, select: true,
+      card: {
+        title: 'Bare Card',
+        body: 'Styled entirely by the board.',
+        author: 'ada',
+        actionText: 'Act',
+        badge: { text: 'Card', color: '#38bdf8' }
+      }
+    });
+
+    app.blit({
+      id: 'bare_vector', type: 'vector-pointer', x: 420, y: 40, w: 240, drag: true, select: true,
+      vectorPointer: { title: 'Bare Vector', angle: 45, magnitude: 60, label: 'Mag: 60' }
+    });
+
+    app.blit({
+      id: 'bare_media', type: 'media', x: 420, y: 200, w: 240, drag: true, select: true,
+      media: { title: 'Bare Media', caption: 'Placeholder image.' }
+    });
+
+    // Focus without framing, so the reticle sits over the bare board; the theme as tokens on the host alone.
+    const focus = (id) => focusBlit({ frame: false }, app.find(id), stateOf(app.el).root);
+    const theme = (light) => applyTheme(app.el, light ? LIGHT_THEME : null);
+
+    window.fixture = { app, CLS, focus, theme };
+    window.cloudcanvas = app;
+  </script>
+</body>
+</html>

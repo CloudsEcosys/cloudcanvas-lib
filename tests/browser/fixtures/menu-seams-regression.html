@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<!-- Written by Richard Christopher, Copyright 2026 NeoTec, LLC -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Menu seams regression</title>
+  <style>
+    body { margin: 0; }
+    #host { position: absolute; left: 120px; top: 80px; width: 480px; height: 360px; background: #eee; }
+    .cloudcanvas-context-menu { width: 165px; }
+    .cloudcanvas-context-menu-flyout { width: 190px; }
+  </style>
+</head>
+<body>
+  <div id="host"></div>
+  <script type="module">
+    import { blit } from 'cloudcanvas';
+    import { menu } from '../../../plugins/menu.js';
+
+    const app = blit('#host');
+    window.runs = [];
+    window.menuOff = menu(app, { insets: { top: 24, right: 35, bottom: 30, left: 28 }, items: [
+      { id: 'more', label: 'More', renderItem: () => document.createElement('div') },
+      { id: 'child', label: 'Child', parent: 'more', action: () => window.runs.push('child'),
+        renderItem: () => document.createElement('div') },
+      { id: 'leaf', label: 'Leaf', action: () => window.runs.push('leaf'),
+        renderItem: () => document.createElement('div') },
+      { id: 'native', label: 'Native', action: () => window.runs.push('native') }
+    ] });
+    window.ready = true;
+  </script>
+</body>
+</html>

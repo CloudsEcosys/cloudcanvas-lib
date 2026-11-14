@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<!-- Written by Richard Christopher, Copyright 2026 NeoTec, LLC -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Graph</title>
+  <style>
+    body { margin: 0; padding: 8px; background: #0f1117; font-family: sans-serif; color: #e2e8f0; }
+  </style>
+</head>
+<body>
+  <section id="graph-host"></section>
+  <script type="module">
+    import * as ui from '../../../ui/index.js';
+
+    const log = window.log = [];
+    window.ui = ui;
+    // `?map=wide` is a tree two columns wide (one that fits a phone only when scaled), `?map=deep` one of four, `?map=labels` has two links with words
+    // on them, `?map=big` twenty-seven nodes over four levels (too big for any window the cases open); the default is a tree of three. Drawn once, with
+    // no view of its own: the graph takes its first.
+    const map = new URLSearchParams(location.search).get('map') ?? 'plan';
+    const parent = (from, to) => ({ from, to, kind: 'parent' });
+    // A root, five projects of three actions, and a sub-action under each of the first six actions.
+    const big = { nodes: [{ id: 'root', label: 'Delivery', childCount: 5 }], edges: [] };
+    for (let project = 1; project <= 5; project += 1) {
+      big.nodes.push({ id: `p${project}`, label: `Project ${project}`, childCount: 3 });
+      big.edges.push(parent('root', `p${project}`));
+      for (let action = 1; action <= 3; action += 1) {
+        big.nodes.push({ id: `p${project}a${action}`, label: `Action ${project}.${action}`, status: 'Doing' });
+        big.edges.push(parent(`p${project}`, `p${project}a${action}`));
+      }
+    }
+    for (const owner of ['p1a1', 'p1a2', 'p1a3', 'p2a1', 'p2a2', 'p2a3']) {
+      big.nodes.push({ id: `${owner}s`, label: `Sub ${owner}` });
+      big.edges.push(parent(owner, `${owner}s`));
+    }
+    const MAPS = {
+      big,
+      plan: {
+        nodes: [{ id: 'plan', label: 'Plan the launch', childCount: 3 }, { id: 'build', label: 'Build', status: 'Doing', childCount: 1 },
+          { id: 'test', label: 'Test' }, { id: 'ship', label: 'Ship' }, { id: 'docs', label: 'Docs' }],
+        edges: [parent('plan', 'build'), parent('plan', 'test'), parent('plan', 'ship'), parent('build', 'docs')]
+      },
+      wide: {
+        nodes: [{ id: 'plan', label: 'Plan the launch', childCount: 4 }, ...['build', 'test', 'ship', 'docs'].map((id) => ({ id, label: id }))],
+        edges: ['build', 'test', 'ship', 'docs'].map((id) => parent('plan', id))
+      },
+      deep: {
+        nodes: [{ id: 'plan', label: 'Plan the launch', childCount: 1 }, { id: 'build', label: 'Build', childCount: 1 }, { id: 'test', label: 'Test', childCount: 1 }, { id: 'ship', label: 'Ship' }],
+        edges: [parent('plan', 'build'), parent('build', 'test'), parent('test', 'ship')]
+      },
+      // A tree of its own, no node in common with the others: a model that replaces them.
+      other: {
+        nodes: [{ id: 'x-root', label: 'Elsewhere', childCount: 2 }, { id: 'x-one', label: 'One' }, { id: 'x-two', label: 'Two' }],
+        edges: [parent('x-root', 'x-one'), parent('x-root', 'x-two')]
+      },
+      // Four siblings: a link between the first and the last, one between the middle two - both labelled, both running out to the right of the column.
+      labels: {
+        nodes: [{ id: 'plan', label: 'Plan the launch', childCount: 4 }, ...['build', 'test', 'ship', 'docs'].map((id) => ({ id, label: id }))],
+        edges: [...['build', 'test', 'ship', 'docs'].map((id) => parent('plan', id)),
+          { from: 'build', to: 'docs', kind: 'related', label: 'related' }, { from: 'test', to: 'ship', kind: 'depends-on', label: 'depends on' }]
+      }
+    };
+    const model = MAPS[map];
+    const graph = ui.createGraph(document.getElementById('graph-host'), {
+      onActivate: (id) => log.push(['open', id]),
+      onToggle: (id, collapsed) => log.push(['toggle', id, collapsed]),
+      onDropOn: (id, targetId) => log.push(['drop-on', id, targetId]),
+      onConnect: (from, to) => log.push(['link', from, to]),
+      onViewport: (view) => log.push(['viewport', view.x, view.y, view.scale])
+    });
+    const draw = (more = {}) => graph.update({ label: 'Plan', ...model, ...more });
+    draw();
+    /** The graph drawn at `scale` where a host that restores a saved view puts it. */
+    window.zoomGraph = (scale) => draw({ viewport: { x: 16, y: 150, scale } });
+    window.drawGraph = draw;
+    window.MAPS = MAPS;
+    window.graph = graph;
+    window.ready = true;
+  </script>
+</body>
+</html>

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<!-- Written by Richard Christopher, Copyright 2026 NeoTec, LLC -->
+<!--
+  The offload fixture: a handful of cards spread far enough across the canvas
+  that the view can only ever hold some of them, so a pan genuinely moves cards
+  in and out of range.
+
+  A page of its own rather than the dashboard, for the reason `resize.html` is
+  one: every claim here is about DOM membership under a moving camera - whether
+  an element is actually *removed* from the document, not merely hidden - and
+  the dashboard has been zoomed and panned a dozen times by the time any suite
+  reaches it. Nothing on this page moves unless the test moves it.
+
+  Each offloaded card declares a modest margin (`offload: {margin: 200}`), so a
+  pan of ~1.5k canvas pixels is enough to cross it either way. The host's inline
+  style is the page's own: the viewport box; no text selection under a gesture is the board's.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CloudCanvas - offload fixture</title>
+</head>
+<body>
+  <div id="offload-host" style="position: absolute; inset: 0;"></div>
+
+  <script type="module">
+    import { schedule } from 'cloudcanvas/kernel';
+    import { stateOf } from 'cloudcanvas/kernel';
+    import { isOffloaded } from '../../../plugins/offload.js';
+    import { setSelected } from '../../../plugins/select.js';
+    import { cameraOf, createBoard } from '../../../sandbox/board.js';
+
+    const app = createBoard('#offload-host', { label: 'Offload board' });
+    const MARGIN = Object.freeze({ margin: 200 });
+
+    // Always-visible control: a plain card near the origin, never offloaded.
+    app.blit({ id: 'card_home', type: 'card', x: 100, y: 100, w: 200, h: 120, card: { title: 'Home', body: 'Always in view.' } });
+
+    // Off-screen at rest: created far to the right, so it is offloaded before the
+    // first pan and only comes back when the camera pans over to it.
+    app.blit({
+      id: 'card_far_right', type: 'card', x: 3000, y: 100, w: 200, h: 120, offload: MARGIN,
+      card: { title: 'Far Right', body: 'Panned into view.' }
+    });
+
+    // Visible at rest, resizable and selected: the size-survival probe.
+    const resizable = app.blit({
+      id: 'card_resizable', type: 'card', x: 360, y: 320, w: 240, h: 130, offload: MARGIN,
+      card: { title: 'Resize Me', body: 'Drag a corner.' },
+      select: true,
+      resize: { minWidth: 120, minHeight: 80, maxWidth: 480, maxHeight: 360 }
+    });
+    setSelected(resizable, true);
+
+    // Off-screen and NOT offloaded: proof the sweep considers only opted-in cards.
+    app.blit({
+      id: 'card_no_offload', type: 'card', x: 3000, y: 1200, w: 200, h: 120,
+      card: { title: 'Stayer', body: 'Off-screen but kept.' }
+    });
+
+    // Tilt the camera in 3D (`perspective`, `rotateX`, `rotateY`); `project` is where it puts a canvas point on the page.
+    const root = stateOf(app.el).root;
+    const tilt = (fields) => { Object.assign(root.camera, fields); schedule(root); };
+    const project = (x, y) => root.camera.project(x, y, app.el.getBoundingClientRect());
+    window.fixture = { app, camera: cameraOf(app), isOffloaded, tilt, project };
+    window.cloudcanvas = app;
+  </script>
+</body>
+</html>

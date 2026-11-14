@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<!-- Written by Richard Christopher, Copyright 2026 NeoTec, LLC -->
+<!--
+  A core root with the gap add-ons, no bridge and no legacy engine: a row
+  container and a free one (layout, gap), a styled card with an editor inside
+  (style, edit), and history over the root. The suite reads what Chromium lays
+  out and drives the editor with a real mouse.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CloudCanvas - core add-ons fixture</title>
+  <style>
+    body { margin: 0; font-family: system-ui, sans-serif; }
+    #app { position: absolute; inset: 0; background: #0f1117; }
+    .box { background: #1e293b; box-sizing: border-box; }
+    .chip { background: #38bdf8; box-sizing: border-box; }
+    .card { background: #334155; color: #e2e8f0; box-sizing: border-box; padding: 8px; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <script type="module">
+    import { blit, type } from 'cloudcanvas';
+    import { gap, layout } from '../../../plugins/layout.js';
+    import { style } from '../../../plugins/style.js';
+    import { edit } from '../../../plugins/edit.js';
+    import { back, go, history } from '../../../plugins/history.js';
+
+    blit.use({ layout, gap, style, edit, history });
+    type('box', { html: '<div data-scope></div>' });
+
+    const app = blit('#app');
+    app.set({ history: true });
+
+    const row = app.blit({ type: 'box', x: 100, y: 100, w: 500, layout: 'row', gap: 10 });
+    const chips = [0, 1, 2].map((index) => row.blit({ x: 300 + index, y: 300, w: 80, h: 40 }));
+    const free = app.blit({ type: 'box', x: 100, y: 300, w: 300, layout: 'free' });
+    free.blit({ x: 20, y: 100, w: 60, h: 40 });
+    const card = app.blit({ x: 700, y: 100, w: 200, h: 100, style: { radius: 14, background: '#445566' }, edit: true });
+
+    for (const b of [row, free]) b.el.classList.add('box');
+    for (const b of chips) b.el.classList.add('chip');
+    card.el.classList.add('card');
+    const input = document.createElement('input');
+    input.id = 'editor';
+    card.el.appendChild(input);
+
+    const views = [];
+    app.on('view:change', (event) => views.push(event.detail.payload.root ? 'row' : 'app'));
+
+    window.__addons = { app, row, chips, free, card, views, go, back };
+    window.cloudcanvas = app;
+  </script>
+</body>
+</html>

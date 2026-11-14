@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<!-- Written by Richard Christopher, Copyright 2026 NeoTec, LLC -->
+<!--
+  The adoption fixture: a page whose content is written in HTML, not in JavaScript.
+
+  Everything inside `#canvas-host` is what a server (or a person) would have
+  emitted with no knowledge of CloudCanvas beyond the `[data-blit]` markers and
+  their `data-*` keys. The script mounts a board on the host - whose scan turns
+  the marked markup into live blits - and adopts one more element by hand. It
+  calls `blit({...})` zero times to make content, sets no textContent, and builds
+  no element - so every heading and paragraph the browser suite finds on the
+  canvas is one of these nodes, moved rather than made.
+
+  The page styles its own markup, as its author would. The board places the
+  blits; this sheet says what the authored content looks like inside them.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CloudCanvas - adoption fixture</title>
+  <style>
+    body { margin: 0; font-family: system-ui, sans-serif; }
+    #canvas-host { position: absolute; inset: 0; }
+    .authored { width: 320px; padding: 12px; box-sizing: border-box; background: rgb(30, 41, 59); color: #e2e8f0; }
+    .authored-child { width: 240px; }
+    .authored h2, .authored h3 { margin: 0 0 6px; font-size: 16px; }
+    .authored p { margin: 0; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div id="canvas-host">
+    <article
+      class="authored"
+      data-blit
+      id="scope_card"
+      data-x="60"
+      data-y="80"
+      data-w="320"
+      data-layout="free"
+      data-drag>
+      <h2 id="scope-heading">Quarterly Review</h2>
+      <p id="scope-body">Written in HTML before CloudCanvas ever loaded.</p>
+
+      <div data-scope>
+        <section
+          class="authored authored-child"
+          data-blit
+          id="child_card"
+          data-x="24"
+          data-y="28"
+          data-w="240"
+          data-drag>
+          <h3 id="child-heading">Line Item</h3>
+          <p id="child-body">Nested markup, nested blit.</p>
+        </section>
+      </div>
+    </article>
+
+    <p id="not-a-blit">Unmarked markup is left exactly where it was written.</p>
+  </div>
+
+  <div class="authored" id="adopt-target">
+    <h2 id="adopt-heading">Adopted By Hand</h2>
+    <p id="adopt-body">One call, one element, no markup re-created.</p>
+  </div>
+
+  <script type="module">
+    import { blit } from 'cloudcanvas';
+    import { cameraOf, createBoard, retype } from '../../../sandbox/board.js';
+
+    // The whole consumer-side surface of this page: one mount, one adoption.
+    const app = createBoard('#canvas-host', { label: 'Adopted board' });
+    window.__hydrated = Array.from(app.el.querySelectorAll('[data-blit]'), (element) => element.id);
+
+    // An element written elsewhere on the page joins by moving under the root:
+    // `blit(element)` adopts what sits under a root, and never re-creates it.
+    const target = document.getElementById('adopt-target');
+    app.el.appendChild(target);
+    const adopted = blit(target).set({ id: 'adopted_card', x: 520, y: 80, w: 320, drag: true, focus: { focusOnClick: true } });
+    window.__adopted = adopted.el.id;
+
+    window.fixture = { app, camera: cameraOf(app), retype };
+    window.cloudcanvas = app;
+  </script>
+</body>
+</html>

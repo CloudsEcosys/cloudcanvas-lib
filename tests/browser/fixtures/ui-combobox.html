@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<!-- Written by Richard Christopher, Copyright 2026 NeoTec, LLC -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Combobox</title>
+  <style>
+    body { margin: 0; padding: 8px; background: var(--cc-bg, #0f1117); font-family: sans-serif; color: var(--cc-text, #e2e8f0); }
+    label { display: block; margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Pick an item</h1>
+    <!-- Forty options, so the list is taller than its popup. `?theme=light` themes the page with the engine's reference light set. `window.show(text)` is the host's own
+         filtering: the options whose label holds the text, listed open. `window.picked` holds what was picked. -->
+    <label for="field">Item</label>
+    <input id="field" type="search" autocomplete="off">
+    <p><button type="button" id="after">After the field</button></p>
+  </main>
+  <script type="module">
+    import * as ui from '../../../ui/index.js';
+    import { LIGHT_THEME } from 'cloudcanvas/theme';
+
+    if (new URLSearchParams(location.search).get('theme') === 'light') {
+      for (const [name, value] of Object.entries(LIGHT_THEME)) document.documentElement.style.setProperty(name, value);
+    }
+    const options = Array.from({ length: 40 }, (_, at) => ({ id: `item-${at + 1}`, label: `Item number ${at + 1}` }));
+    const field = document.getElementById('field');
+    const picked = window.picked = [];
+    const box = ui.createCombobox(field, { onPick: (id) => picked.push(id) });
+    window.show = (text = '') => box.update({ open: true, label: 'Items', options: options.filter((option) => option.label.includes(text)) });
+    field.addEventListener('input', () => window.show(field.value));
+    window.show();
+    window.ready = true;
+  </script>
+</body>
+</html>

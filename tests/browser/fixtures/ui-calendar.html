@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<!-- Written by Richard Christopher, Copyright 2026 NeoTec, LLC -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Calendar</title>
+  <style>
+    body { margin: 0; padding: 8px; background: #0f1117; font-family: sans-serif; color: #e2e8f0; }
+  </style>
+</head>
+<body>
+  <!-- The calendar on the week of 29 September 2026 (`?view=month` for the month), every pick logged as `[date, start, end, allDay]`. -->
+  <section id="calendar-host"></section>
+  <script type="module">
+    import * as ui from '../../../ui/index.js';
+
+    const log = window.log = [];
+    const view = new URLSearchParams(location.search).get('view') ?? 'week';
+    const clock = (date) => `${ui.dayKey(date)}@${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+    const calendar = ui.createCalendar(document.getElementById('calendar-host'), {
+      onPick: ({ date, start, end, allDay }) => log.push(['pick', date, start ? clock(start) : null, end ? clock(end) : null, allDay ?? null]),
+      onActivate: (id) => log.push(['open', id]),
+      onMove: (id) => log.push(['move', id])
+    });
+    // What a host draws again, and asks of the calendar (`focusDay`), in a case that gives the focus back to a day.
+    window.model = { view, date: '2026-09-29', now: '2026-09-29T07:00', locale: 'en-US', events: [] };
+    window.calendar = calendar;
+    calendar.update(window.model);
+    window.ready = true;
+  </script>
+</body>
+</html>

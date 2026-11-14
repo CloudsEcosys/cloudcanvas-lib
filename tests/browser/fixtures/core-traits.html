@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<!-- Written by Richard Christopher, Copyright 2026 NeoTec, LLC -->
+<!--
+  The core with native add-on traits, no bridge and no legacy engine: a root
+  over #app and two cards carrying drag, select and resize. The page owns the
+  look, the resize handles' included; the suite drives it with a real mouse.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CloudCanvas - core traits fixture</title>
+  <style>
+    body { margin: 0; font-family: system-ui, sans-serif; }
+    #app { position: absolute; inset: 0; background: #0f1117; }
+    .card { background: #1e293b; color: #e2e8f0; box-sizing: border-box; padding: 8px; user-select: none; touch-action: none; }
+    .card.is-selected { outline: 2px solid #38bdf8; }
+    .cloudcanvas-resize-handle { position: absolute; width: 10px; height: 10px; background: #38bdf8; touch-action: none; }
+    .cloudcanvas-resize-handle[hidden] { display: none; }
+    [data-cc-resize-handle="nw"] { top: 0; left: 0; transform: translate(-50%, -50%); }
+    [data-cc-resize-handle="n"] { top: 0; left: 50%; transform: translate(-50%, -50%); }
+    [data-cc-resize-handle="ne"] { top: 0; right: 0; transform: translate(50%, -50%); }
+    [data-cc-resize-handle="w"] { top: 50%; left: 0; transform: translate(-50%, -50%); }
+    [data-cc-resize-handle="e"] { top: 50%; right: 0; transform: translate(50%, -50%); }
+    [data-cc-resize-handle="sw"] { bottom: 0; left: 0; transform: translate(-50%, 50%); }
+    [data-cc-resize-handle="s"] { bottom: 0; left: 50%; transform: translate(-50%, 50%); }
+    [data-cc-resize-handle="se"] { bottom: 0; right: 0; transform: translate(50%, 50%); }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <script type="module">
+    import { blit } from 'cloudcanvas';
+    import { drag } from '../../../plugins/drag.js';
+    import { resize } from '../../../plugins/resize.js';
+    import { select } from '../../../plugins/select.js';
+
+    blit.use({ drag, select, resize });
+
+    const app = blit('#app');
+    const traits = { drag: true, select: true, resize: true };
+    const first = app.blit({ x: 100, y: 100, w: 200, h: 100, ...traits });
+    const second = app.blit({ x: 500, y: 100, w: 200, h: 100, ...traits });
+    Object.assign(first.el, { id: 'first', className: 'card' });
+    Object.assign(second.el, { id: 'second', className: 'card' });
+
+    const signals = [];
+    for (const type of ['drag:start', 'drag:end', 'select', 'resize:start', 'resize:end']) {
+      app.on(type, (event) => signals.push({ type, id: event.target.id, payload: event.detail.payload }));
+    }
+
+    window.__traits = { app, first, second, signals };
+    window.cloudcanvas = app;
+  </script>
+</body>
+</html>

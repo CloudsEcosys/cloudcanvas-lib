@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<!-- Written by Richard Christopher, Copyright 2026 NeoTec, LLC -->
+<!--
+  The multi-window dashboard board, for the acceptance, smoke, context-menu and
+  dashboard suites: nested cards, breadcrumb zoom, chat, incidents, a flow
+  graph, an activation demo and a lazy provider scope, driven by the HUD
+  buttons the suites click. `window.cloudcanvas` is the board's root blit.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CloudCanvas - dashboard fixture</title>
+  <style>
+    :root {
+      --cc-bg: #0b0f19;
+      --cc-grid-dot: rgba(99, 102, 241, 0.18);
+      --cc-grid-size: 28px;
+      --cc-accent: #38bdf8;
+      --cc-accent-glow: rgba(56, 189, 248, 0.4);
+      --cc-card-bg: rgba(17, 24, 39, 0.88);
+      --cc-card-border: rgba(255, 255, 255, 0.08);
+      --cc-focus: #833446;
+      --cc-text: #f3f4f6;
+      --cc-text-muted: #94a3b8;
+
+      --cc-btn-bg: rgba(99, 102, 241, 0.2);
+      --cc-btn-bg-hover: rgba(99, 102, 241, 0.4);
+      --cc-btn-border: rgba(99, 102, 241, 0.4);
+      --cc-btn-text: #a5b4fc;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--cc-bg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif;
+      color: var(--cc-text);
+      user-select: none;
+    }
+
+    /* The host is the page's to lay out and paint; the board places blits inside it. */
+    #canvas-container {
+      width: 100vw;
+      height: 100vh;
+      position: absolute;
+      top: 0;
+      left: 0;
+      background-color: var(--cc-bg, #0f1117);
+      color: var(--cc-text, #e2e8f0);
+      font-family: var(--cc-font, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+      font-size: 13px;
+    }
+
+    /* Top Command HUD */
+    .hud-bar {
+      position: fixed;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 9999px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      flex-wrap: wrap;
+      justify-content: center;
+      max-width: 95vw;
+    }
+
+    .hud-title {
+      font-weight: 700;
+      font-size: 13px;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding-right: 10px;
+      border-right: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .hud-title span {
+      color: var(--cc-accent, #38bdf8);
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .hud-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #e2e8f0;
+      padding: 5px 10px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+
+    .hud-btn:hover {
+      background: rgba(56, 189, 248, 0.2);
+      border-color: var(--cc-accent, #38bdf8);
+      color: #fff;
+      transform: translateY(-1px);
+    }
+
+    .hud-btn.primary {
+      background: var(--cc-accent, #38bdf8);
+      color: #0f1117;
+      font-weight: 600;
+      border-color: transparent;
+    }
+
+    .hud-btn.primary:hover {
+      background: #7dd3fc;
+    }
+
+    .hud-btn.focus-btn {
+      background: rgba(131, 52, 70, 0.35);
+      border-color: #833446;
+      color: #fca5a5;
+    }
+
+    .hud-btn.focus-btn:hover {
+      background: #833446;
+      color: #fff;
+    }
+
+    .hud-btn.active {
+      background: #4f46e5;
+      border-color: #818cf8;
+      color: #fff;
+      box-shadow: 0 0 12px var(--cc-accent-glow);
+    }
+
+    /* Live Telemetry / Event Feed Drawer */
+    .event-drawer {
+      position: fixed;
+      bottom: 16px;
+      right: 16px;
+      z-index: 10000;
+      width: 310px;
+      max-height: 180px;
+      pointer-events: none;
+      background: rgba(13, 17, 23, 0.92);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      font-size: 11px;
+    }
+
+    .event-drawer-header {
+      padding: 5px 10px;
+      background: rgba(255, 255, 255, 0.05);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+
+    .event-drawer-feed {
+      padding: 6px 10px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-family: monospace;
+    }
+
+    .event-log-entry {
+      color: #94a3b8;
+      display: flex;
+      gap: 6px;
+    }
+
+    .event-log-entry span.type {
+      color: var(--cc-accent, #38bdf8);
+      font-weight: bold;
+    }
+
+    /* Bottom Info Panel */
+    .info-panel {
+      position: fixed;
+      bottom: 16px;
+      left: 16px;
+      z-index: 10000;
+      padding: 8px 12px;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      font-size: 11px;
+      color: #94a3b8;
+      line-height: 1.5;
+    }
+
+  </style>
+</head>
+<body>
+  <div id="canvas-container"></div>
+
+  <header class="hud-bar">
+    <div class="hud-title">
+      CloudCanvas
+      <span>Dashboard</span>
+    </div>
+    <button class="hud-btn" id="btn-focus-chat">💬 Messenger</button>
+    <button class="hud-btn" id="btn-focus-cal">📅 Incidents</button>
+    <button class="hud-btn" id="btn-focus-flow">⚡ Pipeline</button>
+    <button class="hud-btn" id="btn-focus-scope">🗂 Scopes</button>
+    <button class="hud-btn focus-btn" id="btn-focus-child">&#x2922; Focus Child</button>
+    <button class="hud-btn" id="btn-unfocus">&#x21a9; Back</button>
+    <button class="hud-btn" id="btn-add-card">+ Card</button>
+    <button class="hud-btn" id="btn-toggle-active">Activation: Off</button>
+    <button class="hud-btn" id="btn-load-provider">Load Provider Scope</button>
+    <button class="hud-btn" id="btn-toggle-cursor">Cursor: Default</button>
+    <button class="hud-btn" id="btn-toggle-theme">Theme: Dark</button>
+    <button class="hud-btn primary" id="btn-reset">🎯 Fit Overview</button>
+  </header>
+
+  <div class="event-drawer">
+    <div class="event-drawer-header">
+      <span>SIGNALS</span>
+      <span style="color: #10b981;">● LIVE</span>
+    </div>
+    <div class="event-drawer-feed" id="event-feed"></div>
+  </div>
+
+  <aside class="info-panel" id="stats-hud">
+    <div><strong>Provider scope:</strong> <span id="stat-provider">not loaded</span></div>
+    <div><span>Enter on a card focuses it &bull; the breadcrumb Back button exits a window</span></div>
+  </aside>
+
+  <script type="module" src="./dashboard.js"></script>
+</body>
+</html>

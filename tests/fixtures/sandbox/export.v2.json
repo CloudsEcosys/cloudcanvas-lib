@@ -1,0 +1,134 @@
+{
+  "version": 2,
+  "blits": [
+    {
+      "id": "x_board",
+      "type": "card",
+      "x": 60,
+      "y": 50,
+      "w": 360,
+      "fill": {
+        "title": "Exported Board",
+        "body": "Saved by the v1 exporter."
+      },
+      "draggable": true,
+      "selectable": true,
+      "reload": "persistent",
+      "layout": "column",
+      "gap": 6,
+      "blits": [
+        {
+          "id": "x_note",
+          "type": "card",
+          "x": 0,
+          "y": 0,
+          "w": 280,
+          "fill": {
+            "title": "Note",
+            "body": "nested"
+          },
+          "draggable": true,
+          "selectable": true,
+          "focussable": true
+        },
+        {
+          "id": "x_pencil",
+          "type": "raw",
+          "x": 0,
+          "y": 0,
+          "fill": {
+            "html": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 10 10\"><path d=\"M0 0L9 9\"></path></svg>"
+          },
+          "draggable": true,
+          "selectable": true,
+          "chrome": false
+        }
+      ]
+    },
+    {
+      "id": "x_gauge",
+      "type": "vector-pointer",
+      "x": 480,
+      "y": 60,
+      "w": 240,
+      "fill": {
+        "title": "Gauge",
+        "label": "load"
+      },
+      "draggable": true,
+      "selectable": true
+    },
+    {
+      "id": "x_img",
+      "type": "media",
+      "x": 480,
+      "y": 300,
+      "w": 200,
+      "h": 160,
+      "fill": {
+        "title": "dot.png",
+        "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+        "caption": "a dot"
+      },
+      "draggable": true,
+      "selectable": true,
+      "style": {
+        "border-radius": "12px"
+      }
+    }
+  ],
+  "reactions": [
+    {
+      "id": "rx_3l6vjv6a",
+      "source": "x_gauge",
+      "signal": "select",
+      "action": {
+        "type": "set-content",
+        "target": "x_note",
+        "params": {
+          "key": "title",
+          "value": "Clicked"
+        }
+      }
+    }
+  ],
+  "pages": [
+    {
+      "id": "x_board",
+      "name": "index.html",
+      "home": true
+    }
+  ],
+  "theme": {
+    "--cc-bg": "#f4f5f7",
+    "--cc-grid-dot": "rgba(15, 23, 42, 0.14)",
+    "--cc-text": "#1e293b",
+    "--cc-text-muted": "#64748b",
+    "--cc-accent": "#0284c7",
+    "--cc-focus": "#9f3a52",
+    "--cc-focus-glow": "rgba(159, 58, 82, 0.25)",
+    "--cc-focus-veil": "rgba(241, 245, 249, 0.55)",
+    "--cc-card-bg": "rgba(255, 255, 255, 0.92)",
+    "--cc-card-border": "rgba(15, 23, 42, 0.12)",
+    "--cc-card-border-hover": "rgba(15, 23, 42, 0.2)",
+    "--cc-scope-bg": "rgba(15, 23, 42, 0.05)",
+    "--cc-scope-border": "rgba(15, 23, 42, 0.15)",
+    "--cc-badge-bg": "rgba(2, 132, 199, 0.1)",
+    "--cc-badge-text": "#0369a1",
+    "--cc-badge-text-override": "#1e293b",
+    "--cc-badge-border": "rgba(2, 132, 199, 0.3)",
+    "--cc-btn-bg": "rgba(2, 132, 199, 0.08)",
+    "--cc-btn-bg-hover": "rgba(2, 132, 199, 0.16)",
+    "--cc-btn-border": "rgba(2, 132, 199, 0.35)",
+    "--cc-btn-text": "#0369a1",
+    "--cc-meter-track": "rgba(15, 23, 42, 0.08)",
+    "--cc-meter-end": "#db2777",
+    "--cc-connector": "rgba(2, 132, 199, 0.55)",
+    "--cc-cursor-focus": "#9f3a52",
+    "--cc-cursor-selected": "#0284c7",
+    "--cc-cursor-activated": "#059669",
+    "--cc-cursor-label": "#1e293b",
+    "--cc-shadow-1": "0 2px 8px rgba(15, 23, 42, 0.1), 0 1px 2px rgba(15, 23, 42, 0.08)",
+    "--cc-shadow-2": "0 12px 28px rgba(15, 23, 42, 0.18)"
+  }
+}

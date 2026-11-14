@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<!-- Written by Richard Christopher, Copyright 2026 NeoTec, LLC -->
+<!--
+  The content add-ons on a real GPU (`?backend=webgl2`, `webgpu` or `auto`), the board loaded from XML: a sprite
+  frame from a two-dot sheet, a lit box, GPU text, a canvas drawn by hand, and a filled, stroked SVG path. `window.__content` reads pixels.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CloudCanvas - gpu content fixture</title>
+  <style>body { margin: 0; } #app { position: absolute; inset: 0; }</style>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module">
+    import { blit } from 'cloudcanvas';
+    import { gpu } from '../../../plugins/gpu.js';
+    import { sheet, sprite } from '../../../plugins/sprites.js';
+    import { text } from '../../../plugins/text.js';
+    import { mesh } from '../../../plugins/mesh.js';
+    import { ownCanvas } from '../../../plugins/own-canvas.js';
+    import { fromXml } from '../../../plugins/xml.js';
+    import { svgPath } from '../../../plugins/svg-path.js';
+
+    blit.use({ sprite, text, mesh, svgPath });
+    const dots = document.createElement('canvas');
+    dots.width = 2;
+    dots.height = 1;
+    const paint = dots.getContext('2d');
+    paint.fillStyle = '#ff0000';
+    paint.fillRect(0, 0, 1, 1);
+    paint.fillStyle = '#0000ff';
+    paint.fillRect(1, 0, 1, 1);
+    const dotsSheet = sheet('dots', { src: dots.toDataURL(), frames: { red: [0, 0, 1, 1], blue: [1, 0, 1, 1] } });
+
+    const app = blit('#app');
+    const controller = gpu(app, { backend: new URLSearchParams(location.search).get('backend') || 'auto' });
+    fromXml(app, `<board>
+      <blit id="dot" x="20" y="20" w="40" h="40" port="gpu" sprite='{"sheet":"dots","frame":"blue"}'/>
+      <blit id="box" x="100" y="20" w="60" h="60" port="gpu" tint="#ff0000" mesh='{"shape":"box"}'/>
+      <blit id="label" x="200" y="20" w="120" h="40" port="gpu" text='{"value":"Hi","font":"bold 32px sans-serif","color":"#00ff00"}'/>
+      <blit id="drawn" x="20" y="100" w="40" h="40" port="gpu"/>
+      <blit id="shape" x="100" y="100" w="80" h="80" port="gpu"
+        svg-path='{"d":"M0 0 H24 V24 H0 Z M8 8 V16 H16 V8 Z","viewBox":[0,0,24,24],"fill":"#ff00ff","stroke":"#00ffff","strokeWidth":2}'/>
+    </board>`, { ports: ['gpu'] });
+    ownCanvas(app.find('drawn'), (ctx, { w, h }) => {
+      ctx.fillStyle = '#ffff00';
+      ctx.fillRect(0, 0, w, h);
+    });
+
+    window.__content = {
+      ready: Promise.all([controller.ready, dotsSheet.ready]).then(([kind]) => kind, (error) => `error: ${error.message}`),
+      async pixels(points) {
+        const { width, data } = await controller.snapshot();
+        return points.map(([x, y]) => Array.from(data.slice((y * width + x) * 4, (y * width + x) * 4 + 4)));
+      }
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<!-- Written by Richard Christopher, Copyright 2026 NeoTec, LLC -->
+<!--
+  The sandbox fixture: a small, deterministic board to snapshot.
+
+  Four blits over three levels, chrome on and off, a markup card, selectable
+  text and a trait beyond placement - enough that a round-trip which loses a
+  field has somewhere to show it, and small enough that the assertions can name
+  every blit.
+
+  Nothing here imports `sandbox/` beyond the board. The suite pulls the
+  serializer and the exporter in at evaluate time, so the page under test is an
+  ordinary board page and the export is measured as something done *to* it.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CloudCanvas - sandbox fixture</title>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+    #sandbox-host { position: absolute; inset: 0; }
+  </style>
+</head>
+<body>
+  <div id="sandbox-host"></div>
+
+  <script type="module">
+    import { createBoard } from '../../../sandbox/board.js';
+
+    const app = createBoard('#sandbox-host', { label: 'Sandbox board' });
+
+    const board = app.blit({
+      id: 'sandbox_board', type: 'card', x: 60, y: 50, w: 360, drag: true,
+      card: { title: 'Sandbox Board', body: 'Serialized, stored, and exported.', badge: { text: 'Board', color: '#38bdf8' } }
+    });
+
+    const note = board.blit({
+      id: 'sandbox_note', type: 'card', x: 18, y: 18, w: 280, chrome: false, focus: {},
+      card: { html: '<p data-note>A nested, chromeless card.</p>' }
+    });
+
+    note.blit({
+      id: 'sandbox_leaf', type: 'card', x: 8, y: 8, w: 200, selectableText: true,
+      card: { title: 'Leaf', body: 'Third level, selectable text.' }
+    });
+
+    app.blit({
+      id: 'sandbox_gauge', type: 'vector-pointer', x: 480, y: 60, w: 240,
+      vectorPointer: { title: 'Gauge', label: 'load', magnitude: 75 }
+    });
+
+    window.cloudcanvas = app;
+  </script>
+</body>
+</html>

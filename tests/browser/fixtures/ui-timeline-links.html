@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<!-- Written by Richard Christopher, Copyright 2026 NeoTec, LLC -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Timeline dependencies</title>
+  <style>
+    body { margin: 0; padding: 8px; background: #0f1117; font-family: sans-serif; color: #e2e8f0; }
+  </style>
+</head>
+<body>
+  <section id="timeline-host"></section>
+  <script type="module">
+    import * as ui from '../../../ui/index.js';
+
+    // "Ship" depends on "Brief", and the elbow between them runs down through the days "Draft" and "Proof", the two rows between, both of which last past it.
+    // `onUnlink` is given, as a host that once took it gave it: the connector is drawn the same whether it is or not.
+    const log = window.log = [];
+    const day = (text) => new Date(`${text}T00:00`);
+    const group = { id: 'book', label: 'Writing' };
+    const items = [
+      { id: 'brief', title: 'Brief', start: day('2026-10-05'), end: day('2026-10-06'), group },
+      { id: 'draft', title: 'Draft', start: day('2026-10-05'), end: day('2026-10-09'), group },
+      { id: 'proof', title: 'Proof', start: day('2026-10-05'), end: day('2026-10-09'), group },
+      { id: 'ship', title: 'Ship', start: day('2026-10-09'), end: day('2026-10-10'), group, depends: ['brief'] }
+    ];
+    const timeline = ui.createTimeline(document.getElementById('timeline-host'), {
+      onActivate: (id) => log.push(['open', id]),
+      onChange: (id) => log.push(['change', id]),
+      onLink: (from, to) => log.push(['link', from, to]),
+      onUnlink: (from, to) => log.push(['unlink', from, to]),
+      onMenu: (id) => log.push(['menu', id])
+    });
+    timeline.update({ scale: 'day', now: '2026-10-05T08:00', items, locale: 'en-US', selectedId: null });
+    window.ready = true;
+  </script>
+</body>
+</html>

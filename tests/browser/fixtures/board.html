@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<!-- Written by Richard Christopher, Copyright 2026 NeoTec, LLC -->
+<!--
+  The component library's board, for the dashboard suite's inline-edit and
+  connector checks: sticky notes, a workspace of task cards, telemetry gauges,
+  a connected flow pipeline and a media card, full-window.
+  `window.cloudcanvas` is the board's root blit.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CloudCanvas - board fixture</title>
+  <style>
+    :root {
+      --cc-bg: #0d1117;
+      --cc-grid-dot: rgba(56, 189, 248, 0.15);
+      --cc-grid-size: 24px;
+      --cc-accent: #38bdf8;
+      --cc-card-bg: rgba(22, 27, 34, 0.92);
+      --cc-card-border: rgba(255, 255, 255, 0.1);
+      --cc-text: #f0f6fc;
+      --cc-text-muted: #8b949e;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--cc-bg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: var(--cc-text);
+      user-select: none;
+    }
+    #canvas-container { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; background: var(--cc-bg); }
+  </style>
+</head>
+<body>
+  <div id="canvas-container"></div>
+  <script type="module" src="./board.js"></script>
+</body>
+</html>

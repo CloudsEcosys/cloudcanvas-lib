@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<!-- Written by Richard Christopher, Copyright 2026 NeoTec, LLC -->
+<!--
+  The chrome-toggle fixture: one chromeless native-control blit - a kit Button -
+  on a board, and nothing else.
+
+  Its own page for the same reason `resize.html` is one: every claim here is about
+  a rendered overlay - where the grab handle lands, whether a real pointer at that
+  point actually hits it, whether a click still reaches the button underneath it -
+  and the dashboard has been panned, zoomed and focused a dozen times by the time
+  any suite reaches it. Nothing on this page moves unless the test moves it.
+
+  The host's inline style is the page's own: the viewport box. No text
+  selection under a gesture is the board's own chunk.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CloudCanvas - chrome toggle fixture</title>
+</head>
+<body>
+  <div id="chrome-host" style="position: absolute; inset: 0;"></div>
+
+  <script type="module">
+    import { setSelected } from '../../../plugins/select.js';
+    import { createButton } from '../../../forms/button.js';
+    import { createBoard } from '../../../sandbox/board.js';
+
+    const app = createBoard('#chrome-host', { label: 'Chrome board' });
+
+    // `chrome: false` is `createButton`'s own default: the blit's whole face is a
+    // real <button> the drag correctly stands down on, which is exactly the case
+    // the grab handle exists for.
+    const probe = createButton(app, {
+      id: 'button_chrome_probe', x: 200, y: 200, w: 220, h: 64,
+      label: 'Press me', variant: 'primary',
+      drag: true, select: true
+    });
+    setSelected(probe, true);
+
+    // Count real DOM clicks reaching the control, so the suite can prove a click
+    // still lands on the button and a drag of the handle never becomes one.
+    window.__presses = 0;
+    probe.el.querySelector('.cloudcanvas-lib-button').addEventListener('click', () => { window.__presses += 1; });
+
+    window.fixture = { app, setSelected };
+    window.cloudcanvas = app;
+  </script>
+</body>
+</html>

@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<!-- Written by Richard Christopher, Copyright 2026 NeoTec, LLC -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>UI kit</title>
+  <style>
+    body { margin: 0; padding: 8px; background: #0f1117; font-family: sans-serif; }
+    section { margin-bottom: 24px; }
+    #split { display: flex; height: 80px; }
+    #split > div { flex: 1; background: #1e293b; }
+    #badge-host { display: flex; align-items: center; gap: 12px; color: #e2e8f0; }
+    #drawer-row { display: flex; height: 160px; }
+    #drawer-main { flex: 1; min-width: 0; background: #1e293b; }
+    #drawer-host .cloudcanvas-ui-drawer { width: 180px; height: 100%; }
+    #move-tabs-host { max-width: 520px; }
+    #faces { display: flex; gap: 24px; }
+    #faces > div { flex: 1; min-width: 0; }
+    #tree-host { max-width: 320px; color: #e2e8f0; }
+  </style>
+</head>
+<body>
+  <section><button id="open-dialog" type="button">Open dialog</button><div id="dialog-host"></div></section>
+  <section id="tabs-host"></section>
+  <section id="badge-host"></section>
+  <section id="feed-tabs-host"></section>
+  <section id="folder-tabs-host"></section>
+  <section id="move-tabs-host"></section>
+  <section id="faces"><div id="line-face-host"></div><div id="folder-face-host"></div></section>
+  <section id="tree-host"></section>
+  <section id="menu-stage"><button id="menu-open" type="button">Tab actions</button><div id="menu-host"></div></section>
+  <section id="drawer-stage">
+    <button id="drawer-toggle" type="button">Menu</button>
+    <div id="drawer-row"><div id="drawer-main"></div><div id="drawer-host"></div></div>
+  </section>
+  <section id="split"><div id="left"></div><div id="right"></div></section>
+  <section id="composer-host"></section>
+  <section id="markdown-host"></section>
+  <section id="kanban-host"></section>
+  <section id="calendar-host"></section>
+  <section id="timeline-host"></section>
+  <section id="graph-host"></section>
+  <div id="toast-host"></div>
+  <script type="module">
+    import * as ui from '../../../ui/index.js';
+
+    const log = window.log = [];
+    const NOW = '2026-09-29T08:00';
+    window.ui = ui;
+
+    const dialog = ui.createDialog(document.getElementById('dialog-host'), {
+      onClose: (reason) => { log.push(['dialog-close', reason]); dialog.update({ open: false, title: 'Rename' }); }
+    });
+    const form = document.createElement('div');
+    form.innerHTML = '<input id="dialog-name" aria-label="Name"><button id="dialog-save" type="button">Save</button>';
+    document.getElementById('open-dialog').addEventListener('click', () => dialog.update({ open: true, title: 'Rename', content: form }));
+
+    let active = 'today';
+    const tabItems = [{ id: 'today', label: 'Today' }, { id: 'notes', label: 'Notes' }, { id: 'plan', label: 'Planning' }];
+    const tabs = ui.createTabs(document.getElementById('tabs-host'), {
+      onSelect: (id) => { active = id; log.push(['tab', id]); tabs.update({ label: 'Views', activeId: active, items: tabItems }); }
+    });
+    tabs.update({ label: 'Views', activeId: active, items: tabItems });
+
+    for (const model of [{ count: 9 }, { count: 42, tone: 'success' }, { count: 120, tone: 'danger' }, { count: 1, dot: true, tone: 'warning' }]) {
+      ui.createBadge(document.getElementById('badge-host')).update({ ...model, label: '{count} unread', shape: 'flag' });
+    }
+
+    let feed = null;
+    const feedItems = [
+      { id: 'alerts', label: 'Alerts', badge: { count: 3, label: '{count} unread', tone: 'danger', shape: 'flag' } },
+      { id: 'updates', label: 'Updates', badge: { count: 120, label: '{count} unread', shape: 'flag' } },
+      { id: 'reminders', label: 'Reminders' }
+    ];
+    const feedTabs = ui.createTabs(document.getElementById('feed-tabs-host'), {
+      onSelect: (id) => { feed = id; log.push(['feed', id]); feedTabs.update({ label: 'Feed', activeId: feed, items: feedItems }); }
+    });
+    feedTabs.update({ label: 'Feed', activeId: feed, items: feedItems });
+
+    const trail = [{ id: 'home', label: 'Home' }, { id: 'work', label: 'Work' }, { id: 'q4', label: 'Fourth quarter planning' },
+      { id: 'launch', label: 'Launch' }, { id: 'copy', label: 'Copy review' }];
+    // A row of folders: a pinned tab with nothing behind it, a stack of two, and a stack of five, which folds.
+    const folderItems = [
+      { id: 'pinned', label: 'Activity', pinned: true, closable: true },
+      { id: 'near', label: 'Board', closable: true, layers: trail.slice(1, 3) },
+      { id: 'deep', label: 'Resources', closable: true, layers: trail }
+    ];
+    let folder = null;
+    const drawFolders = () => folderTabs.update({ label: 'Scopes', activeId: folder, items: folderItems });
+    const folderTabs = ui.createTabs(document.getElementById('folder-tabs-host'), {
+      face: 'folder', onSelect: (id) => { folder = id; log.push(['folder', id]); drawFolders(); },
+      onLayer: (tab, layer) => { log.push(['layer', tab, layer]); drawFolders(); }
+    });
+    drawFolders();
+
+    // A strip narrower than its tabs, which can be moved: a pinned tab, one whose name is far too long, and four more.
+    const LONG = 'The quarterly review of everything the team said it would ship this year';
+    const move = { active: null, items: [{ id: 'start', label: 'Start', pinned: true }, { id: 'long', label: LONG, closable: true },
+      ...['Journal', 'Budget', 'Travel', 'Garden'].map((label) => ({ id: label.toLowerCase(), label, closable: true }))] };
+    const drawMove = () => moveTabs.update({ label: 'Sessions', activeId: move.active, items: move.items });
+    const moveTabs = ui.createTabs(document.getElementById('move-tabs-host'), {
+      face: 'folder', onSelect: (id) => { move.active = id; drawMove(); },
+      onReorder: (id, beforeId) => {
+        log.push(['reorder', id, beforeId]);
+        const moved = move.items.splice(move.items.findIndex((item) => item.id === id), 1)[0];
+        move.items.splice(beforeId === null ? move.items.length : move.items.findIndex((item) => item.id === beforeId), 0, moved);
+        drawMove();
+      }
+    });
+    drawMove();
+    /** Make `id` the active tab of the strip that can be moved, standing in front of `layers` (none unless given). */
+    window.showMoveTab = (id, layers = []) => {
+      move.active = id;
+      move.items = move.items.map((item) => (item.id === id ? { ...item, layers } : item));
+      drawMove();
+    };
+    /** The strip that can be moved as the browser drew it: its order, its scroll, and each row's box and marks. */
+    window.moveStrip = () => {
+      const strip = document.querySelector('#move-tabs-host .cloudcanvas-ui-tabs');
+      const [left, , right] = window.boxesOf('#move-tabs-host .cloudcanvas-ui-tabs')[0];
+      return { left, right, scroll: Math.round(strip.scrollLeft), rows: [...strip.children].map((row) => {
+        const tab = row.querySelector('[role="tab"]');
+        const [box] = window.boxesOf(`#${tab.id}`);
+        const nearest = row.querySelector('[role="group"]')?.lastElementChild.getBoundingClientRect() ?? null;
+        return { id: tab.getAttribute('data-ui-id'), box, end: Math.round(row.getBoundingClientRect().right), nearest: nearest && Math.round(nearest.left),
+          drop: row.getAttribute('data-drop'), dragging: row.classList.contains('is-dragging'), title: tab.title, cut: tab.firstChild.scrollWidth > tab.firstChild.clientWidth };
+      }) };
+    };
+
+    /** Resolves once the strip that can be moved has stopped scrolling. */
+    window.moveSettled = () => new Promise((resolve) => {
+      const strip = document.querySelector('#move-tabs-host .cloudcanvas-ui-tabs');
+      let last = NaN;
+      const tick = () => { if (strip.scrollLeft === last) resolve(); else { last = strip.scrollLeft; setTimeout(tick, 120); } };
+      tick();
+    });
+
+    // One model in both faces: a pinned tab, tabs that close, one of them standing in front of two layers, and one whose long label has a flag beside it.
+    const faceItems = [{ id: 'f-home', label: 'Inbox', pinned: true }, { id: 'f-open', label: 'Drafts', closable: true },
+      { id: 'f-long', label: 'Everything the team agreed to deliver before the end of the quarter', closable: true, badge: { count: 3, label: '{count} unread', shape: 'flag' } },
+      { id: 'f-deep', label: 'Archive', closable: true, layers: trail.slice(1, 3) }];
+    for (const face of ['line', 'folder']) {
+      ui.createTabs(document.getElementById(`${face}-face-host`), { face: face === 'line' ? undefined : face, onClose: (id) => log.push(['close', face, id]) })
+        .update({ label: `The ${face} face`, activeId: 'f-open', items: faceItems });
+    }
+
+    const treeItems = [
+      { id: 'work', label: 'Work', count: 12, badge: { count: 3, label: '{count} unread', tone: 'danger', shape: 'flag' } },
+      { id: 'plan', parentId: 'work', label: 'Planning', badge: { count: 120, label: '{count} unread', shape: 'flag' } },
+      { id: 'ship', parentId: 'work', label: 'Shipping', count: 4 },
+      { id: 'home', label: 'Home', badge: 2 }
+    ];
+    ui.createTree(document.getElementById('tree-host')).update({ label: 'Notebooks', items: treeItems, expanded: ['work'], selectedId: 'ship' });
+
+    /** What `selector` matches, in document order, as rounded `[left, top, right, bottom]` boxes; null for one that is not drawn. */
+    window.boxesOf = (selector) => [...document.querySelectorAll(selector)].map((node) => node.getBoundingClientRect())
+      .map((box) => (box.width > 0 ? [box.left, box.top, box.right, box.bottom].map(Math.round) : null));
+
+    /** What has focus, by the name it gives itself, else by its text. */
+    window.focusName = () => document.activeElement.getAttribute('aria-label') ?? document.activeElement.textContent;
+
+    /** Whether `node` is what a pointer at `x`, `y` would land on: it, or something inside it. */
+    const hits = (node, x, y) => node.contains(document.elementFromPoint(x, y));
+
+    /** One face of a stack as the browser drew it, and `front`, the thing standing in front of it. */
+    function layerAsDrawn(face, front) {
+      const [left, top, right, bottom] = window.boxesOf(`#${face.id}`)[0];
+      const style = getComputedStyle(face);
+      const edge = front.getBoundingClientRect().left;
+      const ink = Object.assign(document.createElement('canvas').getContext('2d'), { font: `${style.fontSize} ${style.fontFamily}` });
+      const inside = [[left + 1, (top + bottom) / 2], [right - 2, (top + bottom) / 2], [(left + right) / 2, top + 1], [(left + right) / 2, bottom - 2]];
+      return {
+        text: face.textContent, title: face.parentElement.title, box: [left, top, right, bottom],
+        target: face.parentElement.getBoundingClientRect().height,
+        // How far it runs under what is in front of it, and which of the two a pointer finds there, clear of the rounded corner.
+        overlap: Math.round(right - edge), behind: hits(front, (edge + right) / 2, bottom - 3),
+        // Whether its label is cut short, the room the label has, and the room its first six characters take.
+        cut: face.scrollWidth > face.clientWidth,
+        room: face.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight), six: ink.measureText(face.textContent.slice(0, 6)).width,
+        // Its focus ring, and whether every edge of it is its own: nothing drawn over it.
+        ring: style.outlineStyle, whole: inside.every(([x, y]) => hits(face, x, y))
+      };
+    }
+
+    /**
+     * The stack of the tab `tabId` as the browser drew it: the tab's box, whether it has a close control, and its
+     * layers, back to front. The strip is scrolled to the stack first: a pointer finds nothing that is out of view.
+     */
+    window.stackOf = (tabId) => {
+      const tab = document.querySelector(`#folder-tabs-host [data-ui-id="${tabId}"]`);
+      const faces = [...tab.parentElement.querySelectorAll('.cloudcanvas-ui-tabs-layer-face')];
+      tab.parentElement.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      faces.forEach((face, at) => { face.id = `face-${tabId}-${at}`; });
+      return { tab: window.boxesOf(`#${tab.id}`)[0], close: tab.parentElement.querySelector('[data-ui-close]') !== null,
+        layers: faces.map((face, at) => layerAsDrawn(face, faces[at + 1] ?? tab)) };
+    };
+
+    /** Each flag in `selector` as Chromium drew it: its box, its cloth, its figure's ink, its colours and where it stacks. */
+    window.flagsIn = (selector) => [...document.querySelectorAll(`${selector} .cloudcanvas-ui-badge-flag`)].map((svg) => {
+      const box = svg.getBoundingClientRect();
+      const cloth = svg.querySelector('.cloudcanvas-ui-badge-flag-pennant');
+      const pennant = cloth.getBBox();
+      const text = svg.querySelector('text');
+      const style = getComputedStyle(text);
+      const ink = Object.assign(document.createElement('canvas').getContext('2d'), { font: `${style.fontWeight} ${style.fontSize} ${style.fontFamily}` })
+        .measureText(text.textContent);
+      const centre = Number(text.getAttribute('x'));
+      const baseline = text.getNumberOfChars() ? text.getStartPositionOfChar(0).y : null;
+      const root = getComputedStyle(svg.closest('.cloudcanvas-ui-badge'));
+      return {
+        figure: text.textContent, attrs: [Number(svg.getAttribute('width')), Number(svg.getAttribute('height'))], size: [box.width, box.height],
+        cloth: { left: pennant.x, right: pennant.x + pennant.width, middle: pennant.y + pennant.height / 2, height: pennant.height },
+        inkLeft: centre - ink.width / 2, inkRight: centre + ink.width / 2,
+        inkMiddle: baseline === null ? null : baseline - (ink.actualBoundingBoxAscent - ink.actualBoundingBoxDescent) / 2,
+        fontSize: parseFloat(style.fontSize), fontWeight: style.fontWeight,
+        tone: getComputedStyle(cloth).fill, onTone: style.fill, staff: getComputedStyle(svg.querySelector('.cloudcanvas-ui-badge-flag-staff')).fill,
+        shadow: getComputedStyle(svg).filter, plate: root.backgroundColor, layer: root.zIndex
+      };
+    });
+
+    /** A tab's close control as the browser drew it: its size, whether it stands inside its tab's box, what it draws of its own, and whether a pointer at its middle finds it. */
+    function closeAsDrawn(close, tab) {
+      close.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      const [box, face, style] = [close.getBoundingClientRect(), tab.getBoundingClientRect(), getComputedStyle(close)];
+      return { size: [close.offsetWidth, close.offsetHeight], inside: box.left >= face.left && box.right <= face.right + 0.5 && box.top >= face.top - 0.5 && box.bottom <= face.bottom + 0.5,
+        own: [style.backgroundColor, style.backgroundImage, style.borderTopWidth, style.borderRightWidth, style.boxShadow].join(' '),
+        found: document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2) === close };
+    }
+
+    /** The tabs of the strip in `hostId` as the browser drew them: the box, the face and the edges of each, its label and badge, and its close control. */
+    window.facesOf = (hostId) => [...document.querySelectorAll(`#${hostId} [role="tab"]`)].map((tab) => {
+      const style = getComputedStyle(tab);
+      const close = tab.parentElement.querySelector('[data-ui-close]:not([hidden])');
+      const [label, badge] = [tab.querySelector('.cloudcanvas-ui-tabs-label'), tab.querySelector('.cloudcanvas-ui-badge')];
+      return { id: tab.getAttribute('data-ui-id'), active: tab.getAttribute('aria-selected') === 'true', box: window.boxesOf(`#${tab.id}`)[0],
+        corners: [style.borderTopLeftRadius, style.borderTopRightRadius], edges: [style.borderLeftWidth, style.borderTopWidth, style.borderRightWidth], line: style.borderBottomColor,
+        shadow: style.boxShadow !== 'none', page: style.backgroundColor, ink: style.color, washes: style.backgroundImage.split('linear-gradient(').length - 1,
+        cut: label.scrollWidth > label.clientWidth, badge: badge ? Math.round(badge.getBoundingClientRect().left - label.getBoundingClientRect().right) : null,
+        close: close ? closeAsDrawn(close, tab) : null };
+    });
+
+    /**
+     * Where a pointer finds `selector`: at its middle, 21px from its middle each way (`around`: left, right, up, down),
+     * and down its middle line from its top edge (`below`: how far down, to 44px, it is still the one found).
+     */
+    window.reachOf = (selector) => {
+      const node = document.querySelector(selector);
+      node.scrollIntoView({ block: 'center', inline: 'center' });
+      const box = node.getBoundingClientRect();
+      const [x, y] = [box.left + box.width / 2, box.top + box.height / 2];
+      const at = (px, py) => node.contains(document.elementFromPoint(px, py));
+      let below = 0;
+      while (below < 44 && at(x, box.top + below + 0.5)) below += 1;
+      return { drawn: [Math.round(box.width), Math.round(box.height)], middle: at(x, y), around: [[-21, 0], [21, 0], [0, -21], [0, 21]].map(([dx, dy]) => at(x + dx, y + dy)), below };
+    };
+
+    /**
+     * The first flag of the feed strip as the browser drew it; given a `rise`, the strip is told to let its flags rise
+     * that far first, and is pulled up under the section above it, which is given a ground of its own to be overlapped.
+     */
+    window.feedFlag = (rise) => {
+      const host = document.getElementById('feed-tabs-host');
+      if (rise) {
+        host.style.setProperty('--cc-ui-flag-rise', rise);
+        host.style.marginTop = `-${rise}`;
+        Object.assign(host.previousElementSibling.style, { position: 'relative', zIndex: '1', marginBottom: '0', background: 'rgb(30, 41, 59)' });
+      }
+      const strip = host.querySelector('.cloudcanvas-ui-tabs');
+      const flag = host.querySelector('.cloudcanvas-ui-badge-flag').getBoundingClientRect();
+      const tab = host.querySelector('[role="tab"]').getBoundingClientRect();
+      const hit = document.elementFromPoint(flag.left + flag.width / 2, flag.top + 4);
+      return { above: tab.top - flag.top, tab: tab.height, cut: strip.getBoundingClientRect().top - flag.top, scrolls: strip.scrollHeight - strip.clientHeight,
+        under: host.previousElementSibling.getBoundingClientRect().bottom - flag.top, front: Boolean(hit?.closest('#feed-tabs-host .cloudcanvas-ui-badge-flag')) };
+    };
+
+    /** How wide the page scrolls, and where the right edge of everything `selector` matches is. */
+    window.widthsOf = (selector) => ({ page: document.documentElement.scrollWidth,
+      views: [...document.querySelectorAll(selector)].map((node) => Math.round(node.getBoundingClientRect().right)) });
+
+    /** For each selector: the item its element belongs to (asked from inside it), whether it says it is the selected one, and whether it wears the ring. */
+    window.marksOf = (selectors) => selectors.map((selector) => document.querySelector(selector))
+      .map((node) => [ui.itemIdOf(node.firstElementChild ?? node), node.getAttribute('aria-current'), getComputedStyle(node).boxShadow.includes('inset')]);
+
+    /** The layers of the tab `tabId` in the strip of `hostId`, then the tab: their boxes, and whether each layer's label is cut short. */
+    window.layersInLine = (hostId, tabId) => ({
+      boxes: window.boxesOf(`#${hostId} :is(.cloudcanvas-ui-tabs-layer, [data-ui-id="${tabId}"])`),
+      cut: [...document.querySelectorAll(`#${hostId} .cloudcanvas-ui-tabs-layer-face`)].map((face) => [face.textContent, face.scrollWidth > face.clientWidth])
+    });
+
+    /**
+     * What a pointer finds at one point of the first toast on the page - a toast, a menu, or neither - before a menu is
+     * opened over that point and after.
+     */
+    window.menuOverToast = () => {
+      const box = document.querySelector('.cloudcanvas-ui-toast').getBoundingClientRect();
+      const [x, y] = [box.left + 60, box.top + 12];
+      const layer = () => document.elementFromPoint(x, y)?.closest('[role="menu"], .cloudcanvas-ui-toast')?.className.split(' ')[0] ?? null;
+      const before = layer();
+      window.openMenu({ x: x - 40, y: y - 60 });
+      return [before, layer()];
+    };
+
+    /** The ring of what has focus: its line, where it is drawn, and whether all four sides of it are the element's own - not cut, nothing over them. */
+    window.ringOf = () => {
+      const node = document.activeElement;
+      const style = getComputedStyle(node);
+      const box = node.getBoundingClientRect();
+      const sides = [[box.left + 1, box.top + box.height / 2], [box.right - 1.5, box.top + box.height / 2], [box.left + box.width / 2, box.top + 1], [box.left + box.width / 2, box.bottom - 1.5]];
+      return { line: style.outlineStyle, offset: style.outlineOffset, whole: sides.every(([x, y]) => hits(node, x, y)) };
+    };
+
+    /** How far `selector`'s box stands from each edge of the viewport: `[left, top, right, bottom]`, rounded. */
+    window.marginsOf = (selector) => {
+      const box = document.querySelector(selector).getBoundingClientRect();
+      return [box.left, box.top, innerWidth - box.right, innerHeight - box.bottom].map(Math.round);
+    };
+
+    /** The drawer as the page has it right now. */
+    window.drawerState = () => {
+      const panel = document.querySelector('.cloudcanvas-ui-drawer');
+      const toggle = document.getElementById('drawer-toggle');
+      const box = panel.getBoundingClientRect();
+      const to = toggle.getBoundingClientRect();
+      return {
+        hidden: panel.hidden, inert: panel.inert, travels: panel.getAnimations().length, expanded: toggle.getAttribute('aria-expanded'),
+        controls: toggle.getAttribute('aria-controls') === panel.id, focus: document.activeElement.id,
+        origin: getComputedStyle(panel).transformOrigin.split(' ').map(parseFloat),
+        // Where the control's centre is from the panel's corner: true only while the panel is at rest, since a travel scales its box.
+        aim: [to.left + to.width / 2 - box.left, to.top + to.height / 2 - box.top],
+        main: document.getElementById('drawer-main').getBoundingClientRect().width
+      };
+    };
+
+    /**
+     * QA's reproduction of two defects, as it ran against the kit bundle built before the fix (`focus: [true, false]`,
+     * `afterRelease: [null, null]`): a redraw took the focused tab out of the page, and a drawer letting go of a
+     * control stripped what another drawer had written on it.
+     */
+    window.redrawAndRelease = async (specifier) => {
+      const kit = await import(specifier);
+      const host = document.createElement('div');
+      document.body.append(host);
+      const tabs = kit.createTabs(host, {});
+      const model = { label: 'x', activeId: 'a', activation: 'manual', items: [{ id: 'a', label: 'A', panelId: 'p' }, { id: 'b', label: 'B', panelId: 'p' }] };
+      tabs.update(model);
+      const tab = host.querySelector('[role=tab]');
+      tab.focus();
+      const focus = [document.activeElement === tab];
+      tabs.update(model);
+      focus.push(document.activeElement === tab);
+      tabs.update({ ...model, activeId: 'b', items: [model.items[1]] });
+      const stop = document.activeElement === host.querySelector('[role=tab][tabindex="0"]');
+      const anchor = document.createElement('button');
+      const first = kit.createDrawer(host);
+      const second = kit.createDrawer(host);
+      host.append(anchor);
+      first.update({ open: true, label: '1', collapseTo: anchor });
+      second.update({ open: true, label: '2', collapseTo: anchor });
+      const held = [anchor.getAttribute('aria-controls') === second.panel.id, anchor.getAttribute('aria-expanded')];
+      first.update({ open: true, label: '1', collapseTo: null });
+      const afterRelease = [anchor.getAttribute('aria-controls') === second.panel.id, anchor.getAttribute('aria-expanded')];
+      second.destroy();
+      return { focus, stop, held, afterRelease, bare: [anchor.getAttribute('aria-controls'), anchor.getAttribute('aria-expanded')] };
+    };
+
+    const menuItems = [
+      { id: 'rename', label: 'Rename' }, { id: 'pin', label: 'Pin', disabled: true },
+      { id: 'move', label: 'Move to', separatorBefore: true, items: [{ id: 'left', label: 'Left' }, { id: 'right', label: 'Right' }] },
+      { id: 'close', label: 'Close tab', danger: true, separatorBefore: true }
+    ];
+    const menuOpen = document.getElementById('menu-open');
+    const menu = ui.createMenu(document.getElementById('menu-host'), {
+      onSelect: (id) => log.push(['menu-select', id]), onClose: (reason) => log.push(['menu-close', reason])
+    });
+    window.openMenu = (at) => menu.update({ open: true, label: 'Tab actions', items: menuItems, anchor: menuOpen, at });
+    menuOpen.addEventListener('click', () => window.openMenu());
+
+    const drawerToggle = document.getElementById('drawer-toggle');
+    const setDrawer = (open) => { log.push(['drawer', open]); drawer.update({ open, label: 'Menu', collapseTo: drawerToggle }); };
+    const drawer = ui.createDrawer(document.getElementById('drawer-host'), { onToggle: setDrawer });
+    drawer.panel.innerHTML = '<input id="drawer-field" aria-label="Filter"><button id="drawer-close" type="button">Hide menu</button>';
+    drawer.panel.querySelector('#drawer-close').addEventListener('click', () => setDrawer(false));
+    drawer.update({ open: true, label: 'Menu', collapseTo: drawerToggle });
+
+    const split = ui.createSplitter(document.getElementById('split'), {
+      onChange: (value) => { log.push(['split', value]); split.update({ value, min: 10, max: 90 }); }
+    });
+    document.getElementById('split').insertBefore(document.querySelector('.cloudcanvas-ui-splitter'), document.getElementById('right'));
+    split.update({ value: 50, min: 10, max: 90 });
+
+    const composer = ui.createComposer(document.getElementById('composer-host'), {
+      onSubmit: (text) => { log.push(['submit', text]); }, onCancel: () => log.push(['cancel'])
+    });
+    composer.update({ label: 'Message', placeholder: 'Write a message' });
+
+    ui.createMarkdownView(document.getElementById('markdown-host')).update({
+      source: '## Notes\n- [x] **done** item\n- see [site](https://example.com) and <b>raw</b>'
+    });
+
+    // The middle column stands for an item, and its one card is the selected item.
+    const board = { label: 'Plan', selectedId: 'c', columns: [
+      { id: 'todo', label: 'To do', cards: [{ id: 'a', title: 'Call dentist' }, { id: 'b', title: 'Buy milk' }] },
+      { id: 'doing', itemId: 'goal', label: 'Doing', cards: [{ id: 'c', title: 'Write report' }] },
+      { id: 'done', label: 'Done', cards: [] }
+    ] };
+    const kanban = ui.createKanban(document.getElementById('kanban-host'), {
+      onActivate: (id) => log.push(['open-card', id]),
+      onMove: (id, to, index) => {
+        log.push(['move-card', id, to, index]);
+        let card;
+        for (const column of board.columns) {
+          const at = column.cards.findIndex((entry) => entry.id === id);
+          if (at !== -1) [card] = column.cards.splice(at, 1);
+        }
+        board.columns.find((column) => column.id === to).cards.splice(index, 0, card);
+        kanban.update(board);
+      }
+    });
+    kanban.update(board);
+
+    const events = [
+      { id: 'call', title: 'Call', start: new Date('2026-09-29T09:00'), end: new Date('2026-09-29T10:00') },
+      { id: 'sync', title: 'Sync', start: new Date('2026-09-29T14:00'), end: new Date('2026-09-29T14:15') },
+      { id: 'trip', title: 'Trip', start: new Date('2026-09-30T00:00'), allDay: true }
+    ];
+    let calendarModel = { view: 'month', date: '2026-09-29', now: NOW, events, locale: 'en-US', hours: { start: 6, end: 22 }, selectedId: 'trip' };
+    const calendar = ui.createCalendar(document.getElementById('calendar-host'), {
+      onNavigate: ({ view, date }) => { calendarModel = { ...calendarModel, view, date }; log.push(['navigate', view, date]); },
+      onMove: (id, times) => {
+        log.push(['move-event', id, times.start.toISOString(), times.end?.toISOString() ?? null]);
+        Object.assign(events.find((event) => event.id === id), times);
+        calendar.update({ ...calendarModel, events });
+      }
+    });
+    calendar.update(calendarModel);
+
+    const items = [
+      { id: 'draft', title: 'Draft', start: new Date('2026-09-28T00:00'), end: new Date('2026-10-02T00:00'), group: { id: 'book', label: 'Writing' } },
+      { id: 'ship', title: 'Ship', start: new Date('2026-10-06T00:00'), group: 'Release' }
+    ];
+    const drawTimeline = () => timeline.update({ scale: 'week', now: NOW, items, locale: 'en-US', selectedId: 'draft' });
+    const timeline = ui.createTimeline(document.getElementById('timeline-host'), {
+      onActivate: (id) => log.push(['open-item', id]),
+      onChange: (id, times) => {
+        log.push(['move-item', id, times.start.toISOString(), times.end?.toISOString() ?? null]);
+        Object.assign(items.find((item) => item.id === id), times);
+        drawTimeline();
+      }
+    });
+    drawTimeline();
+
+    // The graph is a computed tree: no node has a place of its own, and a drop is only asked for, never applied.
+    const graphModel = { label: 'Plan', nodes: [{ id: 'plan', label: 'Plan' }, { id: 'build', label: 'Build' }, { id: 'test', label: 'Test' }],
+      edges: [{ from: 'plan', to: 'build', kind: 'parent' }, { from: 'plan', to: 'test', kind: 'parent' }] };
+    const graph = ui.createGraph(document.getElementById('graph-host'), { onDropOn: (id, targetId) => log.push(['drop-on', id, targetId]) });
+    graph.update(graphModel);
+    /** The graph drawn at `scale`, well clear of its toolbar and edges, as a host that restores a saved view does. */
+    window.zoomGraph = (scale) => graph.update({ ...graphModel, viewport: { x: 60, y: 150, scale } });
+
+    window.toaster = ui.createToaster(document.getElementById('toast-host'), { onAction: (toastId, actionId) => log.push(['toast-action', toastId, actionId]) });
+    window.ready = true;
+  </script>
+</body>
+</html>

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<!-- Written by Richard Christopher, Copyright 2026 NeoTec, LLC -->
+<!--
+  One GPU backend (`?backend=webgl2` or `?backend=webgpu`) drawing the shared fixture scene straight from a
+  Scene, no blits: opaque and half-alpha quads overlapping, a 2x2 texture in four colours, a rotated quad and a
+  tinted one; two erasing quads (a full hole, a half one); then meshes - a lit box turned 30 degrees (two faces, two shades), a quad over it (quads never
+  depth-test), and two flat planes where the one drawn first is nearer and must win. The pixels read back land on `window.__result` for the suite to check and to diff across backends.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CloudCanvas - gpu backend fixture</title>
+  <style>body { margin: 0; } canvas { width: 320px; height: 150px; display: block; }</style>
+</head>
+<body>
+  <canvas id="gpu"></canvas>
+  <script type="module">
+    import { Camera } from 'cloudcanvas/kernel';
+    import { Scene, clipMatrix } from '../../../plugins/gpu-scene.js';
+    import { boxGeometry, planeGeometry } from '../../../plugins/mesh-geometry.js';
+
+    const name = new URLSearchParams(location.search).get('backend');
+
+    /** A 2x2 texture: red, green / blue, yellow. */
+    function quadrants() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 2;
+      canvas.height = 2;
+      const context = canvas.getContext('2d');
+      [['#ff0000', 0, 0], ['#00ff00', 1, 0], ['#0000ff', 0, 1], ['#ffff00', 1, 1]].forEach(([fill, x, y]) => {
+        context.fillStyle = fill;
+        context.fillRect(x, y, 1, 1);
+      });
+      return canvas;
+    }
+
+    /** Translate to `(cx, cy, depth)`, turn `turnY` radians about y, scale: mat4, column-major. */
+    function place(cx, cy, depth, [sx, sy, sz], turnY = 0) {
+      const [c, s] = [Math.cos(turnY), Math.sin(turnY)];
+      return [c * sx, 0, -s * sx, 0, 0, sy, 0, 0, s * sz, 0, c * sz, 0, cx, cy, depth, 1];
+    }
+
+    /** Fill the scene the suite expects; the same for every backend. */
+    function fixtureScene() {
+      const scene = new Scene();
+      scene.set('red', { x: 10, y: 10, w: 60, h: 40, color: [1, 0, 0, 1] });
+      scene.set('blue', { x: 40, y: 30, w: 60, h: 40, z: 1, color: [0, 0, 1, 0.5] });
+      scene.set('texture', { x: 120, y: 10, w: 64, h: 64, texture: quadrants() });
+      scene.set('turned', { x: 20, y: 90, w: 60, h: 20, rotation: Math.PI / 2, color: [0, 1, 0, 1] });
+      scene.set('tinted', { x: 120, y: 90, w: 64, h: 40, texture: quadrants(), uv: [0, 0, 0.5, 0.5], color: [1, 1, 1, 0.5] });
+      const box = boxGeometry();
+      const plane = planeGeometry();
+      scene.set('box', { mesh: box, transform: place(250, 40, 0, [40, 40, 40], Math.PI / 6), color: [1, 0, 0, 1] });
+      scene.set('over', { x: 266, y: 44, w: 10, h: 10, z: 5 });
+      scene.set('near', { mesh: plane, transform: place(300, 25, 10, [30, 30, 1]), color: [0, 1, 0, 1], lit: false });
+      scene.set('far', { mesh: plane, transform: place(310, 40, 0, [20, 30, 1]), color: [0, 0, 1, 1], lit: false });
+      // Holes: a full one in the red, a half one in the blue.
+      scene.set('hole', { x: 20, y: 35, w: 10, h: 10, z: 3, erase: true });
+      scene.set('half', { x: 60, y: 55, w: 10, h: 10, z: 3, erase: true, color: [1, 1, 1, 0.5] });
+      // Plain arrays are no geometry: both backends skip it, and the frame draws the rest.
+      scene.set('malformed', { mesh: { vertices: [0, 0, 0, 0, 0, 1], indices: [0, 0, 0] }, transform: place(100, 140, 0, [9, 9, 9]) });
+      return scene;
+    }
+
+    async function run() {
+      const canvas = document.getElementById('gpu');
+      canvas.width = 320;
+      canvas.height = 150;
+      const { createBackend } = await import(`../../../plugins/gpu-${name}.js`);
+      const backend = await createBackend(canvas, {});
+      const scene = fixtureScene();
+      const { instances, count, dirty, batches, uploads, drops, meshUploads, meshDrops } = scene.pack();
+      for (const id of drops) backend.dropTexture(id);
+      for (const [id, source] of uploads) backend.texture(id, source);
+      for (const id of meshDrops) backend.dropMesh(id);
+      for (const [id, geometry] of meshUploads) backend.mesh(id, geometry);
+      const clip = clipMatrix(new Camera(), { width: 320, height: 150 }, backend.depthRange);
+      backend.draw({ clip, instances, count, dirty, batches, clear: [0, 0, 0, 0] });
+      const { width, height, data } = await backend.read();
+      backend.destroy();
+      return { kind: backend.kind, width, height, data: Array.from(data) };
+    }
+
+    window.__result = run().catch((error) => ({ error: String(error && error.stack || error) }));
+  </script>
+</body>
+</html>

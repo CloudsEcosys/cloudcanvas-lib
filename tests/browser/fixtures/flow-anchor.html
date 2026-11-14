@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<!-- Written by Richard Christopher, Copyright 2026 NeoTec, LLC -->
+<!--
+  The flow-anchor fixture: a connector anchored to a flow child, for the one
+  claim only a real browser settles - that a blit's `bounds` (and so a connector
+  drawn from them) track where flex actually renders a flow child, not where its
+  declared x/y sit, even after a sibling reflows it.
+
+  A `column` container stacks `col_top` above `col_bottom` by flex. `col_bottom`
+  carries a connector to a fixed top-level `anchor`, and is given a deliberately
+  wrong y (500): flow, not the declared y, decides where it renders, so a
+  connector reading the declared y would point ~500px too low. Growing `col_top`
+  pushes `col_bottom` down without touching its declared y - the exact case the
+  flow origin is for. The camera is at the origin at 1x and the host fills the
+  window from its top-left corner, so canvas and client space coincide.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CloudCanvas - flow-anchor fixture</title>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+    #flow-host { position: absolute; inset: 0; }
+  </style>
+</head>
+<body>
+  <div id="flow-host"></div>
+
+  <script type="module">
+    import { createBoard } from '../../../sandbox/board.js';
+
+    const app = createBoard('#flow-host', { label: 'Flow anchor board' });
+
+    const column = app.blit({
+      id: 'col_container', type: 'card', x: 80, y: 80, w: 240, layout: 'column', gap: 12,
+      card: { title: 'Column' }
+    });
+
+    // The top child: growing it pushes the bottom one down.
+    column.blit({ id: 'col_top', type: 'card', x: 0, y: 0, w: 180, h: 60, card: { title: 'Top' } });
+
+    // The bottom child carries a connector to a fixed top-level anchor. Its declared
+    // y is deliberately wrong (500): a connector reading it would point far below
+    // where flex actually renders this child.
+    column.blit({
+      id: 'col_bottom', type: 'card', x: 0, y: 500, w: 180, h: 60, card: { title: 'Bottom' },
+      connect: { connections: ['anchor'] }
+    });
+
+    app.blit({ id: 'anchor', type: 'card', x: 520, y: 220, w: 120, h: 60, card: { title: 'Anchor' } });
+
+    window.fixture = { app };
+    window.cloudcanvas = app;
+  </script>
+</body>
+</html>

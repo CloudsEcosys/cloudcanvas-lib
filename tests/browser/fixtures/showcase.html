@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<!-- Written by Richard Christopher, Copyright 2026 NeoTec, LLC -->
+<!--
+  The feature-showcase board the context-menu suite steps into with the
+  keyboard: eight capability cards and a card holding a breadcrumb and a child,
+  built from the public surface on a board in a 600px frame. Enter on a card
+  promotes it; `#hero-back` backs out; `window.cloudcanvas` is the root blit.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CloudCanvas - showcase fixture</title>
+  <style>
+    body { margin: 0; padding: 24px; background: var(--cc-bg, #0f1117); color: var(--cc-text, #e2e8f0); font-family: system-ui, sans-serif; }
+    .canvas-toolbar { display: flex; gap: 8px; margin-bottom: 12px; }
+    .canvas-frame { height: 600px; border: 1px solid var(--cc-card-border, rgba(255, 255, 255, 0.1)); overflow: hidden; }
+    .canvas-host { width: 100%; height: 100%; background: var(--cc-bg, #0f1117); }
+  </style>
+</head>
+<body>
+  <div class="canvas-toolbar">
+    <button type="button" id="hero-fit">Fit view</button>
+    <button type="button" id="hero-back">Back out</button>
+  </div>
+  <div class="canvas-frame">
+    <div class="canvas-host" id="hero-canvas"></div>
+  </div>
+  <script type="module" src="./showcase.js"></script>
+</body>
+</html>

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<!-- Written by Richard Christopher, Copyright 2026 NeoTec, LLC -->
+<!--
+  The panel fixture: a shell holding a board, and a panels layer over it with three panels - a sheet pinned
+  to the right edge, a notes panel declared in markup on the left, and a floating tools panel with a form.
+
+  The tools panel may also go to a window of its own (`places` lists `window`).
+
+  The board is content that makes room: its box reads the layer's inset variables, so a pinned panel takes
+  its own space and a drawer, a float or a modal lies over it. The board is a CloudCanvas root of its own
+  inside the shell (the shell itself is no root), so moving its camera must never move a panel.
+
+  The page's own CSS is scaffolding and the board's cards; every panel style is the panel chunk's.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CloudCanvas - panel fixture</title>
+  <style>
+    body { margin: 0; font-family: system-ui, sans-serif; }
+    #shell { position: absolute; inset: 0; background: #0b0e14; }
+    #board {
+      position: absolute;
+      top: var(--cc-panels-top, 0px);
+      right: var(--cc-panels-right, 0px);
+      bottom: var(--cc-panels-bottom, 0px);
+      left: var(--cc-panels-left, 0px);
+    }
+    .card { box-sizing: border-box; padding: 10px; background: #1e293b; color: #e2e8f0; border-radius: 8px; }
+    .rows { margin: 0; padding: 8px 16px; color: #cbd5e1; line-height: 1.8; }
+    .form { display: grid; gap: 8px; padding: 12px; color: #cbd5e1; }
+    .form input { font: inherit; padding: 4px 6px; }
+  </style>
+</head>
+<body>
+  <div id="shell">
+    <div id="board"></div>
+    <div data-cc-panels>
+      <section data-blit id="notes" data-panel='{"at":"left","size":240,"title":"Notes"}'>
+        <p class="rows">Markup declares this panel; its children are the body.</p>
+      </section>
+    </div>
+  </div>
+
+  <div id="sources" hidden>
+    <ol id="sheet-content" class="rows"><li>Row one</li><li>Row two</li><li>Row three</li><li>Row four</li></ol>
+    <form id="tools-content" class="form">
+      <label>Name <input id="tool-name" value="Probe"></label>
+      <label>Size <input id="tool-size" value="12"></label>
+      <button type="button" id="tool-apply">Apply</button>
+    </form>
+  </div>
+
+  <script type="module">
+    import { blit } from 'cloudcanvas';
+    import { drag } from '../../../plugins/drag.js';
+    import { pan } from '../../../plugins/pan.js';
+    import { bodyOf, panelOf, panels, setPanel } from '../../../plugins/panel.js';
+    import { injectBoardStyles } from '../../../plugins/styles.js';
+
+    blit.use({ drag, pan });
+    injectBoardStyles();
+    const board = blit('#board');
+    board.set({ pan: true });
+    for (const [index, label] of ['Alpha', 'Beta', 'Gamma'].entries()) {
+      const card = board.blit({ id: `card-${index}`, x: 40 + index * 220, y: 80 + index * 40, w: 180, h: 90, drag: true });
+      card.el.className = 'card';
+      card.el.textContent = label;
+    }
+
+    const shell = document.querySelector('#shell');
+    const layer = panels(shell);
+    const sheet = layer.add(document.querySelector('#sheet-content'), { id: 'sheet', at: 'right', size: 300, title: 'Sheet' });
+    const tools = layer.add(document.querySelector('#tools-content'), {
+      id: 'tools', title: 'Tools', box: { x: 340, y: 260, w: 320, h: 220 },
+      places: ['float', 'left', 'right', 'top', 'bottom', 'modal', 'full', 'window']
+    });
+
+    const signals = [];
+    for (const type of ['panel:change', 'panel:refused', 'dismiss', 'drag:start', 'drag:end', 'resize:end']) {
+      // A window is no data: a signal records whether there was one.
+      layer.el.addEventListener(type, (event) => {
+        const { payload } = event.detail;
+        const plain = payload && typeof payload === 'object' && 'window' in payload ? { ...payload, window: Boolean(payload.window) } : payload;
+        signals.push({ type, id: event.target.id, payload: plain });
+      });
+    }
+    shell.addEventListener('panels:inset', (event) => signals.push({ type: 'panels:inset', payload: event.detail.payload }));
+
+    window.fixture = { layer, board, sheet, tools, signals, setPanel, panelOf, bodyOf };
+    window.cloudcanvas = layer.root;
+  </script>
+</body>
+</html>

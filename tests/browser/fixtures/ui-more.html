@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<!-- Written by Richard Christopher, Copyright 2026 NeoTec, LLC -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The more button, the hints, the reach of what is drawn small</title>
+  <style>
+    body { margin: 0; padding: 8px; background: #0f1117; font-family: sans-serif; color: #e2e8f0; }
+    section { margin-bottom: 24px; }
+    #graph-box { max-width: 1100px; }
+    #tree-host { max-width: 320px; }
+  </style>
+</head>
+<body>
+  <!--
+    The graph, the timeline, the calendar and the tree with a menu given - so the "more" button is drawn on what is selected - and
+    every other callback, so every handle is drawn. `?calendar=week` draws the calendar as a week (the month is the default), `?date=` on a day,
+    `?scale=day` the timeline by the day, `?view=auto` the graph with no view of its own. `window.log` holds what the controls reported.
+  -->
+  <section id="graph-box"><div id="graph-host"></div></section>
+  <section id="timeline-host"></section>
+  <section id="calendar-host"></section>
+  <section id="tree-host"></section>
+  <script type="module">
+    import * as ui from '../../../ui/index.js';
+
+    const log = window.log = [];
+    window.ui = ui;
+    const query = new URLSearchParams(location.search);
+    const NOW = '2026-09-29T08:00';
+    const day = (text) => new Date(`${text}T00:00`);
+    const note = (name) => (...args) => log.push([name, ...args.map((arg) => (typeof arg === 'string' ? arg : null))]);
+    const menu = (id, point) => log.push(['menu', id, Math.round(point.x), Math.round(point.y)]);
+
+    const parent = (from, to) => ({ from, to, kind: 'parent' });
+    const graph = ui.createGraph(document.getElementById('graph-host'), {
+      onActivate: note('open'), onToggle: note('toggle'), onDropOn: note('drop-on'), onConnect: note('link'), onAdd: note('add'), onDelete: note('delete'), onMenu: menu
+    });
+    const graphModel = {
+      label: 'Plan', nodes: [{ id: 'plan', label: 'Plan the launch of the spring campaign with every channel ready', childCount: 3 }, { id: 'build', label: 'Build', status: 'Doing', childCount: 1 },
+        { id: 'test', label: 'Test' }, { id: 'ship', label: 'Ship' }, { id: 'docs', label: 'Docs' }],
+      edges: [parent('plan', 'build'), parent('plan', 'test'), parent('plan', 'ship'), parent('build', 'docs')]
+    };
+    /** The graph drawn at `scale` (the view a host restores), `selectedId` selected, `query` searched. */
+    window.drawGraph = (more = {}) => graph.update({ ...graphModel, selectedId: 'plan', viewport: { x: 16, y: 20, scale: 1 }, ...more });
+    /** The graph drawn with no view of its own, as a host first draws it: the graph fits it itself. */
+    window.drawGraphAuto = (more = {}) => graph.update({ ...graphModel, selectedId: 'plan', ...more });
+    // `?view=auto` draws it once with no view of its own: the graph's first view is the graph's to take, and it follows its host's width.
+    if (query.get('view') === 'auto') window.drawGraphAuto(); else window.drawGraph();
+
+    const book = { id: 'book', label: 'Writing' };
+    const items = [
+      { id: 'draft', title: 'Draft', start: day('2026-09-28'), end: day('2026-10-02'), group: book },
+      { id: 'quick', title: 'Call the printer', start: new Date('2026-10-02T09:00'), end: new Date('2026-10-02T09:30'), group: book },
+      { id: 'long', title: 'Write the second part', start: day('2026-10-06'), end: day('2026-10-16'), group: book },
+      { id: 'ship', title: 'Ship', start: day('2026-10-06'), group: 'Release' }
+    ];
+    const timeline = ui.createTimeline(document.getElementById('timeline-host'), {
+      onActivate: note('open'), onChange: (id, times) => log.push(['change', id, times.start.toISOString(), times.end?.toISOString() ?? null]),
+      onCreate: note('create'), onLink: note('link'), onUnlink: note('unlink'), onToggleGroup: note('fold'), onGutter: note('gutter'), onMenu: menu
+    });
+    window.drawTimeline = (selectedId = 'long') => timeline.update({ scale: query.get('scale') ?? 'week', now: NOW, items, locale: 'en-US', selectedId });
+    window.drawTimeline();
+
+    const events = [
+      { id: 'call', title: 'Call the printer', start: new Date('2026-09-29T09:00'), end: new Date('2026-09-29T10:00') },
+      { id: 'lunch', title: 'Lunch with the team about the launch', start: new Date('2026-09-29T12:00'), end: new Date('2026-09-29T13:30') },
+      { id: 'second', title: 'Review the layout', start: new Date('2026-09-29T15:00'), end: new Date('2026-09-29T16:00') },
+      { id: 'trip', title: 'Trip', start: day('2026-10-02'), allDay: true }
+    ];
+    const calendar = ui.createCalendar(document.getElementById('calendar-host'), {
+      onNavigate: () => {}, onPick: note('pick'), onActivate: note('open'), onMove: note('move'), onMenu: menu
+    });
+    window.drawCalendar = (selectedId = 'call') => calendar.update({ view: query.get('calendar') ?? 'month', date: query.get('date') ?? '2026-09-29', now: NOW, events, locale: 'en-US', hours: { start: 6, end: 22 }, selectedId });
+    window.drawCalendar();
+
+    window.tree = ui.createTree(document.getElementById('tree-host'));
+    window.tree.update({ label: 'Notebooks', expanded: ['work'], items: [{ id: 'work', label: 'Work' }, { id: 'plan', parentId: 'work', label: 'Planning' }, { id: 'home', label: 'Home' }] });
+
+    window.ready = true;
+  </script>
+</body>
+</html>

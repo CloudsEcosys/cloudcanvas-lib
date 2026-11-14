@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<!-- Written by Richard Christopher, Copyright 2026 NeoTec, LLC -->
+<!--
+  A root drawing on the GPU (`?backend=webgl2`, `webgpu` or `auto`): a DOM card, a red gpu blit and a half-alpha
+  green one over it. `window.__gpu` tilts the camera, projects canvas points and reads GPU pixels back.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CloudCanvas - gpu fixture</title>
+  <style>
+    body { margin: 0; }
+    #app { position: absolute; inset: 0; }
+    #card { background: #334155; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module">
+    import { blit } from 'cloudcanvas';
+    import { stateOf } from 'cloudcanvas/kernel';
+    import { schedule } from 'cloudcanvas/kernel';
+    import { gpu } from '../../../plugins/gpu.js';
+
+    const app = blit('#app');
+    const controller = gpu(app, { backend: new URLSearchParams(location.search).get('backend') || 'auto' });
+    app.blit({ id: 'card', x: 60, y: 60, w: 120, h: 80 });
+    app.blit({ id: 'red', x: 300, y: 100, w: 160, h: 100, port: 'gpu', tint: '#ff0000' });
+    app.blit({ id: 'green', x: 360, y: 150, w: 80, h: 80, z: 1, port: 'gpu', tint: '#00ff0080' });
+
+    const root = stateOf(app.el).root;
+    window.__gpu = {
+      ready: controller.ready.then((kind) => kind, (error) => `error: ${error.message}`),
+      tilt(fields) { Object.assign(root.camera, fields); schedule(root); },
+      project: (x, y) => root.camera.project(x, y, root.hostRect),
+      async pixels(points) {
+        const { width, data } = await controller.snapshot();
+        return points.map(([x, y]) => {
+          const at = (Math.round(y) * width + Math.round(x)) * 4;
+          return Array.from(data.slice(at, at + 4));
+        });
+      }
+    };
+  </script>
+</body>
+</html>

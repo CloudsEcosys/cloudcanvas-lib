@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<!-- Written by Richard Christopher, Copyright 2026 NeoTec, LLC -->
+<!--
+  A core root with the root add-ons, no bridge and no legacy engine: pan and
+  keyboard attached by name, the menu by a direct call (its commands are
+  functions), two cards. The page owns the look; the suite drives it with a
+  real mouse and keyboard.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CloudCanvas - core root fixture</title>
+  <style>
+    body { margin: 0; font-family: system-ui, sans-serif; }
+    #app { position: absolute; inset: 0; background: #0f1117; }
+    .card { background: #1e293b; color: #e2e8f0; box-sizing: border-box; padding: 8px; user-select: none; touch-action: none; }
+    .card:focus { outline: 2px solid #38bdf8; }
+    .cloudcanvas-context-menu { position: absolute; pointer-events: auto; background: #fff; min-width: 120px; }
+    .cloudcanvas-context-menu[hidden] { display: none; }
+    .cloudcanvas-context-menu-item { display: block; width: 100%; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <script type="module">
+    import { blit } from 'cloudcanvas';
+    import { stateOf } from 'cloudcanvas/kernel';
+    import { schedule } from 'cloudcanvas/kernel';
+    import { keyboard } from '../../../plugins/keyboard.js';
+    import { menu } from '../../../plugins/menu.js';
+    import { pan } from '../../../plugins/pan.js';
+
+    blit.use({ pan, keyboard });
+
+    const app = blit('#app');
+    app.set({ pan: true, keyboard: { label: 'Fixture board' } });
+
+    const ran = [];
+    menu(app, {
+      items: [
+        { id: 'rename', label: 'Rename', when: (root, { target }) => Boolean(target), action: (root, { target }) => ran.push(`rename:${target.el.id}`) },
+        { id: 'home', label: 'Home', action: () => ran.push('home') }
+      ]
+    });
+
+    const first = app.blit({ x: 100, y: 100, w: 200, h: 100 });
+    const second = app.blit({ x: 500, y: 100, w: 200, h: 100 });
+    Object.assign(first.el, { id: 'first', className: 'card', textContent: 'First' });
+    Object.assign(second.el, { id: 'second', className: 'card', textContent: 'Second' });
+
+    const actions = [];
+    app.on('action', (event) => actions.push(`${event.target.id}:${event.detail.payload.key}`));
+
+    const camera = () => {
+      const { x, y, scale } = stateOf(app.el).root.camera;
+      return { x, y, scale };
+    };
+    // Tilt the camera in 3D; `project` is where the core camera says a canvas point lands on the page, through the
+    // host's live box (the host sits at the page origin), and `unproject` the canvas point under a page point.
+    const root = stateOf(app.el).root;
+    const tilt = (fields) => { Object.assign(root.camera, fields); schedule(root); };
+    const project = (x, y) => root.camera.project(x, y, app.el.getBoundingClientRect());
+    const unproject = (x, y) => root.camera.unproject(x, y, app.el.getBoundingClientRect());
+    // Size the host to a box of its own, as a device frame would.
+    const resize = (width, height) => Object.assign(app.el.style, { right: 'auto', bottom: 'auto', width: `${width}px`, height: `${height}px` });
+    window.__root = { app, root, ran, actions, camera, tilt, project, unproject, resize };
+    window.cloudcanvas = app;
+  </script>
+</body>
+</html>

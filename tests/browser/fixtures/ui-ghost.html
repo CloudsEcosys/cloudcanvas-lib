@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<!-- Written by Richard Christopher, Copyright 2026 NeoTec, LLC -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The band a span is drawn as</title>
+  <style>
+    /*
+     * A host that bridges the kit's tokens as a product's theme does, in two themes: a bar is the accent, with the theme's
+     * inverse text on it; a wash is a tint of the accent over the page. These are one product's values (its dark and light
+     * palettes), here because a kit that reads right only on its own defaults reads wrong on a host's.
+     */
+    :root[data-theme="dark"] { --bg: #0b0f14; --bg-raised: #11161d; --border: #232b36; --text: #dfe6ee; --text-inverse: #0b0f14; --accent: #818cf8; --accent-wash: rgba(129, 140, 248, 0.12); }
+    :root[data-theme="light"] { --bg: #f6f7f9; --bg-raised: #ffffff; --border: #d7dce3; --text: #16202b; --text-inverse: #ffffff; --accent: #4338ca; --accent-wash: rgba(67, 56, 202, 0.1); }
+    :root {
+      --cc-bg: var(--bg); --cc-text: var(--text); --cc-accent: var(--accent); --cc-card-bg: var(--bg-raised); --cc-card-border: var(--border);
+      --cc-btn-bg-hover: var(--accent-wash); --cc-ui-bar: var(--accent); --cc-ui-bar-text: var(--text-inverse); --cc-ui-drop: var(--accent);
+      --cc-ui-surface: var(--bg-raised); --cc-ui-grid-line: var(--border);
+    }
+    body { margin: 0; padding: 8px; background: var(--bg); color: var(--text); font-family: sans-serif; }
+  </style>
+</head>
+<body>
+  <section id="host"></section>
+  <script type="module">
+    import * as ui from '../../../ui/index.js';
+
+    const query = new URLSearchParams(location.search);
+    document.documentElement.dataset.theme = query.get('theme') ?? 'dark';
+    const host = document.getElementById('host');
+    const NOW = '2026-09-29T08:00';
+    if (query.get('view') === 'timeline' || query.get('view') === 'summary') {
+      // `summary`: the group folded, so its row draws a summary bar of the items in it.
+      const day = (text) => new Date(`${text}T00:00`);
+      const group = { id: 'book', label: 'Writing', collapsed: query.get('view') === 'summary' };
+      ui.createTimeline(host, { onCreate: () => {}, onActivate: () => {}, onChange: () => {}, onToggleGroup: () => {} })
+        .update({ scale: 'week', now: NOW, locale: 'en-US', items: [{ id: 'draft', title: 'Draft', start: day('2026-09-28'), end: day('2026-10-09'), group }] });
+    } else {
+      ui.createCalendar(host, { onPick: () => {}, onActivate: () => {}, onMove: () => {}, onNavigate: () => {} })
+        .update({ view: 'week', date: '2026-09-29', now: NOW, locale: 'en-US', hours: { start: 8, end: 14 }, events: [] });
+    }
+    window.ready = true;
+  </script>
+</body>
+</html>

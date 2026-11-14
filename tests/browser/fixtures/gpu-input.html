@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<!-- Written by Richard Christopher, Copyright 2026 NeoTec, LLC -->
+<!--
+  Real input on gpu blits (`?backend=...`): two tinted blits on the `gpu` port with drag and select, on a root
+  with pan and keyboard. Their elements are the transparent proxies the pointer and keyboard reach.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CloudCanvas - gpu input fixture</title>
+  <style>body { margin: 0; } #app { position: absolute; inset: 0; } [data-blit] { user-select: none; touch-action: none; }</style>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module">
+    import { blit } from 'cloudcanvas';
+    import { stateOf } from 'cloudcanvas/kernel';
+    import { schedule } from 'cloudcanvas/kernel';
+    import { gpu } from '../../../plugins/gpu.js';
+    import { drag } from '../../../plugins/drag.js';
+    import { select } from '../../../plugins/select.js';
+    import { pan } from '../../../plugins/pan.js';
+    import { keyboard } from '../../../plugins/keyboard.js';
+
+    blit.use({ drag, select, pan, keyboard });
+    const app = blit('#app');
+    app.set({ pan: true, keyboard: { label: 'GPU board' } });
+    const controller = gpu(app, { backend: new URLSearchParams(location.search).get('backend') || 'auto' });
+    const first = app.blit({ id: 'first', x: 100, y: 100, w: 120, h: 80, port: 'gpu', tint: '#ff0000', drag: true, select: true });
+    app.blit({ id: 'second', x: 400, y: 100, w: 120, h: 80, port: 'gpu', tint: '#0000ff', drag: true, select: true });
+    const actions = [];
+    const selected = [];
+    app.on('action', (event) => actions.push(event.target.id));
+    app.on('select', (event) => selected.push(event.target.id));
+
+    const root = stateOf(app.el).root;
+    window.__input = {
+      ready: controller.ready.then((kind) => kind, (error) => `error: ${error.message}`),
+      actions, selected,
+      at: () => ({ x: first.x, y: first.y }),
+      tilt(fields) { Object.assign(root.camera, fields); schedule(root); },
+      project: (x, y) => root.camera.project(x, y, root.hostRect),
+      async pixel(x, y) {
+        const { width, data } = await controller.snapshot();
+        const at = (Math.round(y) * width + Math.round(x)) * 4;
+        return Array.from(data.slice(at, at + 4));
+      }
+    };
+  </script>
+</body>
+</html>

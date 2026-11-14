@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<!-- Written by Richard Christopher, Copyright 2026 NeoTec, LLC -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Controls a host sets in its own page</title>
+  <style>
+    body { margin: 0; background: #0f1117; font-family: sans-serif; color: #e2e8f0; }
+    #bar { display: flex; justify-content: flex-end; align-items: center; height: 44px; padding: 0 8px; }
+    #strip { height: 44px; background: #1e293b; }
+    main { padding: 8px; max-width: 480px; }
+    section { margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+  <!--
+    What a host does with the kit's controls in its own page: the (i) in a top bar opening a popover that must not cover the
+    tab strip right under the bar, a select with and without a status line, tabs with and without icons, and a question the host
+    closes itself. `window.pop`, `window.picker`, `window.tabs` and `window.ask(...)` are the handles the test drives.
+  -->
+  <header id="bar"><button id="info" type="button" aria-label="Status">i</button></header>
+  <nav id="strip"></nav>
+  <main>
+    <section id="plain-select"></section>
+    <section id="noted-select"></section>
+    <section id="plain-tabs"></section>
+    <section id="icon-tabs"></section>
+  </main>
+  <script type="module">
+    import * as ui from '../../../ui/index.js';
+
+    const info = document.getElementById('info');
+    const strip = document.getElementById('strip');
+    const note = document.createElement('p');
+    note.textContent = 'Saved on this device. Nothing waits to be sent.';
+    const reasons = window.reasons = [];
+    const pop = ui.createPopover(info, { avoid: strip, onClose: (reason) => reasons.push(reason) });
+    info.addEventListener('click', () => pop.update({ open: true, label: 'Save status', content: note }));
+
+    const OPTIONS = [{ value: 'daily', label: 'Every day' }, { value: 'weekly', label: 'Every week' }];
+    window.picker = ui.createSelect(document.getElementById('noted-select'));
+    ui.createSelect(document.getElementById('plain-select')).update({ label: 'Digest', value: 'daily', options: OPTIONS });
+    window.drawPicker = (status) => window.picker.update({ label: 'Digest', value: 'daily', options: OPTIONS, status });
+    window.drawPicker(undefined);
+
+    const items = [{ id: 'board', label: 'Kanban' }, { id: 'map', label: 'Mind Map' }];
+    ui.createTabs(document.getElementById('plain-tabs')).update({ label: 'Plain views', activeId: 'board', items });
+    const icons = [ui.createIcon(document, 'plus'), ui.createIcon(document, 'info')];
+    ui.createTabs(document.getElementById('icon-tabs')).update({ label: 'Icon views', activeId: 'board', items: items.map((item, at) => ({ ...item, icon: icons[at] })) });
+
+    window.ask = (words) => { window.asking = ui.confirmDialog(words); return window.asking; };
+    window.ready = true;
+  </script>
+</body>
+</html>

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<!-- Written by Richard Christopher, Copyright 2026 NeoTec, LLC -->
+<!--
+  The flow-layout fixture: containers whose children are laid out by flex/grid
+  rather than by their own transforms, for the claims only a real browser settles
+  (they all turn on live layout, which happy-dom has none of).
+
+  Every container's children are given deliberately *scrambled* x/y - the
+  reverse of the order they are added in, or all piled on one point - so a passing
+  layout can only be flow doing the work: if the transform still drove them they
+  would render reversed or overlapping. The camera is at the origin at 1x, so
+  canvas space and screen space coincide and the test's mouse coordinates are the
+  cards' own.
+
+    - row_container    : a 'row' flow, children added a,b,c but placed c,b,a.
+    - switch_container : starts 'free' with children staggered right; the test
+                         flips it to 'row' and checks they re-flow with no leftover
+                         transform (a lingering one would shift them right).
+    - grid_container   : a 'grid' flow, four children on a narrow well so they wrap
+                         into two columns and two rows.
+    - size_container   : a 'row' flow whose children are given no width or height
+                         at all, at a deep y. Every other container states both,
+                         which hides two size bugs at once: a well sized from a flow
+                         child's stale extent, and children stretched by the flex
+                         default to fill it.
+
+  A flow child dropped by a drag is reordered where it was released: the layout
+  add-on's `insertionBefore` reads the drop point against its siblings' rendered
+  boxes, and `reorder` moves it - the same two calls the builder makes.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CloudCanvas - flow layout fixture</title>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+    #layout-host { position: absolute; inset: 0; }
+  </style>
+</head>
+<body>
+  <div id="layout-host"></div>
+
+  <script type="module">
+    import { insertionBefore, layoutOf, reorder } from '../../../plugins/layout.js';
+    import { createBoard } from '../../../sandbox/board.js';
+
+    const app = createBoard('#layout-host', { label: 'Layout board' });
+
+    /** A container card: its children go into its scope well. */
+    const container = (id, x, y, w, extra, title, body) => app.blit({ id, type: 'card', x, y, w, card: { title, body }, ...extra });
+
+    /** A child card at a deliberately misleading position. */
+    const child = (parent, id, x, y, extra = { w: 100, h: 60 }) => parent.blit({ id, type: 'card', x, y, drag: true, card: { title: id }, ...extra });
+
+    /* ---- row: children added a,b,c but placed c,b,a ---- */
+    const row = container('row_container', 40, 40, 520, { layout: 'row', gap: 12 }, 'Row', 'Flows left to right.');
+    child(row, 'row_a', 300, 0);
+    child(row, 'row_b', 150, 0);
+    child(row, 'row_c', 0, 0);
+
+    /* ---- switch: starts free, staggered right; the test flips it to row ---- */
+    const swap = container('switch_container', 40, 300, 520, {}, 'Switch', 'Free until the test flips it.');
+    child(swap, 'switch_a', 220, 20);
+    child(swap, 'switch_b', 110, 20);
+    child(swap, 'switch_c', 0, 20);
+
+    /* ---- grid: four children on a narrow well, so they wrap 2x2 ---- */
+    const grid = container('grid_container', 620, 40, 300, { layout: 'grid', gap: 10 }, 'Grid', 'Two by two.');
+    for (const id of ['grid_1', 'grid_2', 'grid_3', 'grid_4']) child(grid, id, 0, 0);
+
+    /* ---- size: a row of children with no size of their own, dropped deep ---- */
+    const sized = container('size_container', 620, 420, 420, { layout: 'row', gap: 8 }, 'Sizes', 'Children keep their own.');
+    for (const id of ['size_a', 'size_b', 'size_c']) child(sized, id, 0, 200, {});
+
+    // A dropped flow child moves to where it was released among its siblings.
+    let released = null;
+    window.addEventListener('pointerup', (event) => { released = { clientX: event.clientX, clientY: event.clientY }; }, true);
+    app.on('drag:end', (event) => {
+      const dropped = event.detail.source;
+      if (event.detail.payload.cancelled || !released || !dropped.parent || !layoutOf(dropped.parent)) return;
+      if (layoutOf(dropped.parent) === 'free') return;
+      reorder(dropped, insertionBefore(dropped, released));
+    });
+
+    window.fixture = { app };
+    window.cloudcanvas = app;
+  </script>
+</body>
+</html>

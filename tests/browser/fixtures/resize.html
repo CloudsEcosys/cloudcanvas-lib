@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<!-- Written by Richard Christopher, Copyright 2026 NeoTec, LLC -->
+<!--
+  The resize fixture: one resizable card on a board, and one plain blit wearing
+  the card surface for the border toggle.
+
+  A page of its own rather than the dashboard, for the same reason `bare.html`
+  is one: every claim here is about a *rendered box* - its width to the pixel,
+  where each handle lands, whether a border toggle reflowed anything - and the
+  dashboard is a board that has been zoomed, panned and focused a dozen times
+  by the time any suite reaches it. Nothing on this page moves unless the test
+  moves it.
+
+  The host's inline style is the page's own: layout scaffolding for the
+  viewport box. No text selection under a gesture is the board's own chunk.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CloudCanvas - resize fixture</title>
+</head>
+<body>
+  <div id="resize-host" style="position: absolute; inset: 0;"></div>
+
+  <script type="module">
+    import { setSelected } from '../../../plugins/select.js';
+    import { createBoard } from '../../../sandbox/board.js';
+
+    const app = createBoard('#resize-host', { label: 'Resize board' });
+
+    // Granted as spec keys, by name: the only route a saved or exported board has.
+    app.blit({
+      id: 'card_resize_probe', type: 'card', x: 80, y: 80, w: 240, h: 120,
+      card: { title: 'Resize Probe', body: 'Drag a corner.' },
+      drag: true,
+      select: { selected: true },
+      resize: { minWidth: 120, minHeight: 80, maxWidth: 420, maxHeight: 300 }
+    });
+
+    // The border toggle's probe: a plain blit wearing the card surface (`chrome: true`).
+    const plain = app.blit({ id: 'blit_border_probe', x: 520, y: 80, w: 240, h: 120, chrome: true });
+    plain.el.textContent = 'Border Probe';
+
+    window.fixture = { app, setSelected };
+    window.cloudcanvas = app;
+  </script>
+</body>
+</html>
