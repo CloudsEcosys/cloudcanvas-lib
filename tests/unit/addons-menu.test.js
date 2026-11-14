@@ -6,8 +6,7 @@
  * (`{target, x, y}`), opens only when something applies, runs a command with
  * the root's handle, nests submenus, closes on Escape and gives the keyboard
  * back; a right-click the pan add-on cancelled opens nothing. The registry,
- * overlay and nested-flyout cases ported from `context-menu.test.js` (ledger:
- * tests/fixtures/test-ledger.json).
+ * overlay and nested-flyout cases ported from `context-menu.test.js`.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';

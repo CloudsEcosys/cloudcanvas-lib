@@ -5,7 +5,9 @@
  *
  * This package is written against the core package, `cloudcanvas`, and reaches it
  * only by package specifier - `cloudcanvas`, `cloudcanvas/kernel`, `cloudcanvas/log`
- * and the other keys its `exports` names - never by a path into it. Inside the
+ * and the other keys its `exports` names - never by a path into it. The core's
+ * test seams (`cloudcanvas/testing`, `cloudcanvas/style-gates`) are for tests and
+ * scripts only: no shipped module imports them. Inside the
  * package, imports are relative. No file names a cc-main layout path
  * (`.plugin`, `.addons`, `.site`) or reaches into `node_modules` by path.
  *
@@ -28,6 +30,9 @@ const CORE_MANIFEST = JSON.parse(readFileSync(fileURLToPath(import.meta.resolve(
 /** The engine half and the widget half, root-relative; together they are everything the package ships. */
 const ENGINE = Object.freeze(['plugins', 'ui', 'defaults.js']);
 const WIDGETS = Object.freeze(['index.js', 'coerce.js', 'styles.js', 'archetypes', 'components', 'display', 'forms', 'sandbox']);
+
+/** The core entries only tests and scripts may import. */
+const TEST_SEAMS = Object.freeze(['cloudcanvas/testing', 'cloudcanvas/style-gates']);
 
 /** What tests and scripts may also import: the devDependencies. */
 const TOOLING = Object.freeze(Object.keys(MANIFEST.devDependencies).filter((name) => name !== CORE_MANIFEST.name));
@@ -85,15 +90,21 @@ test('boundary - no path names the cc-main layout or reaches into node_modules',
   assert.deepEqual(offendersIn([...SHIPPED, ...TOOLS], layout), []);
 });
 
-test('boundary - a shipped module imports the core, a published entry of its own, or a file inside the package', () => {
+test('boundary - a shipped module imports the core (no test seam), a published entry of its own, or a file inside the package', () => {
   const outside = (spec, file) => {
-    if (isCore(spec)) return false;
+    if (isCore(spec)) return TEST_SEAMS.includes(spec);
     if (isSelf(spec)) return !Object.hasOwn(MANIFEST.exports, exportKey(MANIFEST.name, spec));
     if (!spec.startsWith('.')) return true;
     const target = path.resolve(path.dirname(file), spec);
     return !inHalf([...ENGINE, ...WIDGETS], target) || !existsSync(target);
   };
   assert.deepEqual(offendersIn(SHIPPED, outside), []);
+});
+
+test('boundary - the test seams are real core entries, and tests use them', () => {
+  for (const seam of TEST_SEAMS) assert.ok(Object.hasOwn(CORE_MANIFEST.exports, exportKey(CORE_MANIFEST.name, seam)), `${seam} is not exported`);
+  const used = new Set(TOOLS.flatMap(specifiersOf));
+  assert.deepEqual(TEST_SEAMS.filter((seam) => !used.has(seam)), [], 'a seam no test imports');
 });
 
 test('boundary - tests and scripts import only the packages, the builtins and the tooling', () => {

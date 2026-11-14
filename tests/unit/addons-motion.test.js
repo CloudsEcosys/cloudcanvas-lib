@@ -5,8 +5,7 @@
  * easing table, exact landing), the animated fit and its box shapes and
  * clamps, the projection, the reduced-motion rule and its live query, and
  * `motion(b)` turning a root's snapping `view()` into a flight the frame loop
- * carries to the end. The camera maths ported from `viewport.test.js` (ledger:
- * tests/fixtures/test-ledger.json).
+ * carries to the end. The camera maths ported from `viewport.test.js`.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';

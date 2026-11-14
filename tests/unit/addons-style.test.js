@@ -3,7 +3,7 @@
  *
  * The style add-on on core blits: one whitelist, direct inline properties, a
  * trait whose cleanup takes off what it wrote, and a spec round trip through
- * `data-style`. Ported from the 0.4 style suite (ledger: tests/fixtures/test-ledger.json).
+ * `data-style`. Ported from the 0.4 style suite.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';

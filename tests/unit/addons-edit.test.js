@@ -4,8 +4,7 @@
  * The edit add-on on core blits: while a blit is edited, a widget render into it
  * is deferred, and `end` replays the last one exactly once. Driven through a real
  * `defineWidget` whose render rebuilds its host - the shape an editor cannot
- * survive. Ported from the edit-lock half of `content-funnel.test.js` (ledger:
- * tests/fixtures/test-ledger.json).
+ * survive. Ported from the edit-lock half of `content-funnel.test.js`.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';

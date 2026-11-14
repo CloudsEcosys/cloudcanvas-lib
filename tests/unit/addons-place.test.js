@@ -4,8 +4,8 @@
  * The place add-on on core blits: the deterministic free-spot spiral, on the
  * canvas and inside a scope; `move`, which nests or un-nests a blit without a
  * visible jump; and `hit`, the deepest blit under a point. Ported from
- * `placement.test.js` and the reparent / hit-test half of `reparent.test.js`
- * (ledger: tests/fixtures/test-ledger.json). Every assertion is an exact point.
+ * `placement.test.js` and the reparent / hit-test half of `reparent.test.js`.
+ * Every assertion is an exact point.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';

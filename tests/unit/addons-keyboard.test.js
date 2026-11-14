@@ -8,7 +8,7 @@
  * steps into the blits and arrows rove them in reading order, Enter and Space
  * emit `action`, Escape and Home step the root out, owned keys are left alone.
  * The key table, reading order, Space and reveal cases ported from
- * `keyboard.test.js` (ledger: tests/fixtures/test-ledger.json).
+ * `keyboard.test.js`.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';

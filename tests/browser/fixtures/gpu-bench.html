@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<!-- Written by Richard Christopher, Copyright 2026 NeoTec, LLC -->
+<!--
+  The GPU benchmark (`?backend=...&count=10000&port=gpu|dom`): `count` sprites of one sheet, then the synchronous
+  CPU cost of a first frame, a camera pan, one blit moved and every blit moved, each the median of several runs.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CloudCanvas - gpu benchmark</title>
+  <style>body { margin: 0; } #app { position: absolute; inset: 0; } [data-blit] { background: #38bdf8; }</style>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module">
+    import { blit } from 'cloudcanvas';
+    import { stateOf } from 'cloudcanvas/kernel';
+    import { runFrame } from 'cloudcanvas/testing';
+    import { gpu, gpuContent } from '../../../plugins/gpu.js';
+
+    const params = new URLSearchParams(location.search);
+    const count = Number(params.get('count')) || 10000;
+    const onGpu = params.get('port') !== 'dom';
+    const median = (values) => values.slice().sort((a, b) => a - b)[Math.floor(values.length / 2)];
+    const time = (fn) => { const start = performance.now(); fn(); return performance.now() - start; };
+
+    async function run() {
+      const app = blit('#app');
+      const root = stateOf(app.el).root;
+      root.running = false;
+      let kind = 'dom';
+      if (onGpu) kind = await gpu(app, { backend: params.get('backend') || 'auto' }).ready;
+      const sheet = document.createElement('canvas');
+      sheet.width = 64;
+      sheet.height = 16;
+      const blits = [];
+      const build = time(() => {
+        for (let i = 0; i < count; i += 1) {
+          const b = app.blit({ x: (i % 200) * 6, y: Math.floor(i / 200) * 6, w: 5, h: 5, port: onGpu ? 'gpu' : null });
+          if (onGpu) gpuContent(b, { texture: sheet, uv: [(i % 4) / 4, 0, (i % 4 + 1) / 4, 1] });
+          blits.push(b);
+        }
+      });
+      const first = time(() => runFrame(root, 1));
+      // `profile`: each write pass timed on its own (paint, plane, then the GPU's).
+      const passes = {};
+      let step = 'first';
+      if (params.has('profile')) {
+        const writes = [...root.hooks.write];
+        root.hooks.write.clear();
+        writes.forEach((fn, i) => root.hooks.write.add((ctx) => {
+          const start = performance.now();
+          fn(ctx);
+          ((passes[step] ??= {})[i] ??= []).push(performance.now() - start);
+        }));
+      }
+      // Each measured frame follows two animation frames, so the browser has laid out and painted the last one's
+      // writes - as it would between real frames - and only this frame's own work is counted.
+      const settle = () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const pan = [];
+      const one = [];
+      const all = [];
+      for (let run = 0; run < 7; run += 1) {
+        await settle();
+        step = 'pan';
+        root.camera.panBy(1, 0);
+        pan.push(time(() => runFrame(root, 1)));
+        await settle();
+        step = 'one';
+        blits[run].set({ x: blits[run].x + 1 });
+        one.push(time(() => runFrame(root, 1)));
+        await settle();
+        step = 'all';
+        for (const b of blits) b.set({ y: b.y + 0.5 });
+        all.push(time(() => runFrame(root, 1)));
+      }
+      const split = Object.fromEntries(Object.entries(passes).map(([name, byPass]) => [name,
+        Object.values(byPass).map((values) => +median(values).toFixed(2))]));
+      return { kind, count, build, first, pan: median(pan), one: median(one), all: median(all), split };
+    }
+
+    window.__bench = run().catch((error) => ({ error: String(error) }));
+  </script>
+</body>
+</html>
