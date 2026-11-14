@@ -6,11 +6,13 @@
   "main": "index.js",
   "exports": {
     ".": "./index.js",
+    "./coerce": "./coerce.js",
     "./forms": "./forms/index.js",
     "./display": "./display/index.js",
     "./components": "./components/index.js",
     "./archetypes": "./archetypes/index.js",
     "./sandbox": "./sandbox/index.js",
+    "./sandbox/testing": "./sandbox/testing.js",
     "./ui": "./ui/index.js",
     "./ui/testing": "./ui/testing/index.js",
     "./defaults": "./defaults.js",

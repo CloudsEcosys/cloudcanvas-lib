@@ -36,6 +36,7 @@ export {
 } from './serialize.js';
 export { PART_KEYS, attachBoardPart } from './board-parts.js';
 export {
+  HTML_KEY,
   PROTOTYPE_KEYS,
   RESERVED_FIELD_KEYS,
   RESERVED_KEY_PREFIX,

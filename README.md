@@ -26,6 +26,7 @@ imports. Coming from 0.6, the plugin subpaths move from `cloudcanvas/<name>` to 
 | components | `cloudcanvas-lib/components` | sticky note, task card, telemetry gauge, flow node, workspace group, media card, breadcrumb bar, chat message and composer, calendar event; `editable` and `snapToGrid` traits; `registerComponents()` |
 | archetypes | `cloudcanvas-lib/archetypes` | `section` and `table` types |
 | sandbox | `cloudcanvas-lib/sandbox` | `createBoard`, save format v2 (`serializeBoard` / `deserializeBoard`, v1 migrated on load), persistence and auto-save, the static-site export and its runtime bundle |
+| coerce | `cloudcanvas-lib/coerce` | `asText`, `toNumber`: the kit's value coercion |
 
 Every widget is a `widget()` (`cloudcanvas-lib/widget`): a type whose contents live under its own key and render
 through `bind` and `render`. Each has a factory taking the parent blit:
@@ -105,6 +106,7 @@ theme, tokens and primitives they read are the core's (`cloudcanvas/theme`, `clo
 |---|---|---|
 | `cloudcanvas-lib/ui` | product-agnostic DOM controls: each `create<Name>(host, callbacks)` returns `{ update(model), destroy() }`, themed through `--cc-*` tokens | 79.0 KB |
 | `cloudcanvas-lib/ui/testing` | the kit's minimal Node document (`installDocument`, `makeNode`) for testing kit controls | 2.2 KB |
+| `cloudcanvas-lib/sandbox/testing` | the save format's internals for tests (`readDocument`, `LOADER_FUNCTIONS`, `NODE_KEYS`, `V1_NODES_KEY`) | - |
 
 ## Bundles
 

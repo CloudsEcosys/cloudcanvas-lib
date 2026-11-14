@@ -37,7 +37,7 @@ const INTERNAL_ADDONS = Object.freeze([
 
 /** The kit, its groups, the UI kit, the defaults and the add-on CSS, ahead of the add-ons. */
 const KIT_ENTRIES = Object.freeze([
-  'index', 'forms', 'display', 'components', 'archetypes', 'sandbox', 'ui', 'ui/testing', 'defaults', 'graphics'
+  'index', 'coerce', 'forms', 'display', 'components', 'archetypes', 'sandbox', 'sandbox/testing', 'ui', 'ui/testing', 'defaults', 'graphics'
 ]);
 
 /** Ceiling, gzip -9 bytes. */

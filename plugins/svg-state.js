@@ -23,6 +23,9 @@ import { SVG_STATE_CSS } from './css/svg-state.js';
 import { MOVING_CLASS, prefersReducedMotion } from './motion.js';
 import { defineTrait, injectAddonCss } from './trait.js';
 
+/** The add-on's stylesheet, for a host that injects it itself. */
+export { SVG_STATE_CSS };
+
 export const SVG_STATE_WRAPPER_CLASS = 'cloudcanvas-svg-state-wrapper';
 export const SVG_STATE_HOST_CLASS = 'cloudcanvas-svg-state-host';
 export const SVG_STATE_PATH_CLASS = 'cloudcanvas-svg-state-path';

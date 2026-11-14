@@ -15,6 +15,10 @@
     "min": 64548,
     "gzip": 19950
   },
+  "coerce": {
+    "min": 139,
+    "gzip": 132
+  },
   "forms": {
     "min": 54039,
     "gzip": 16380
@@ -32,8 +36,12 @@
     "gzip": 8967
   },
   "sandbox": {
-    "min": 135780,
-    "gzip": 46737
+    "min": 135795,
+    "gzip": 46744
+  },
+  "sandbox/testing": {
+    "min": 9485,
+    "gzip": 3643
   },
   "ui": {
     "min": 299231,
@@ -76,8 +84,8 @@
     "gzip": 3439
   },
   "svg-state": {
-    "min": 12192,
-    "gzip": 4870
+    "min": 12211,
+    "gzip": 4876
   },
   "cursors": {
     "min": 10723,
