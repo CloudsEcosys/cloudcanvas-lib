@@ -110,6 +110,29 @@ test('gpu - the backends load by import() only: in no static chunk, each its own
   }
 });
 
+/** Strings only the core's own code carries: its frame budget literal and its plane attribute. */
+const CORE_MARKERS = Object.freeze(['16.67', 'data-blit-plane']);
+
+/** The one artifact that bundles the core: the board runtime a static export loads from file://. */
+const CORE_CARRIER = 'cloudcanvas.board.iife.js';
+
+/** Every `.js` file under `dist/`, relative to it. */
+function distScripts() {
+  return fs.readdirSync(path.join(ROOT, 'dist'), { recursive: true })
+    .filter((file) => file.endsWith('.js'))
+    .sort();
+}
+
+test('core external - no dist file carries the core but the board runtime, which carries it once', () => {
+  const files = distScripts();
+  assert.ok(files.includes(CORE_CARRIER) && files.some((file) => file.startsWith('esm')), 'dist/ is not built');
+  for (const marker of CORE_MARKERS) {
+    const count = (file) => fs.readFileSync(path.join(ROOT, 'dist', file), 'utf8').split(marker).length - 1;
+    assert.deepEqual(files.filter((file) => file !== CORE_CARRIER && count(file) > 0), [], `${marker} outside the board runtime`);
+    assert.equal(count(CORE_CARRIER), 1, `${marker} in ${CORE_CARRIER}`);
+  }
+});
+
 test('size - the defaults bundle, every export and its registrations, is at most 59.6 KB gzipped', async () => {
   const bytes = await bundle(`export * from '${manifest.name}/defaults';`);
   assert.ok(gzip(bytes) <= DEFAULTS_GZIP_MAX, `defaults bundle is ${gzip(bytes)} B gzipped`);
