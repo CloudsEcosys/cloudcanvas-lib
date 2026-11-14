@@ -8,7 +8,7 @@
  *   const fruit = createSelect(app, { label: 'Fruit', options: [{ value: 'a', label: 'Apple' }] });
  *
  * The options are the one list-shaped thing in the forms, so they go through
- * `reconcileKeyedList` (`cloudcanvas/keyed-list`) keyed on `option.value`: the
+ * `reconcileKeyedList` (`cloudcanvas-lib/keyed-list`) keyed on `option.value`: the
  * element already holding a key is reused, a new key gets one element, and what
  * is left over is removed. Rewriting the list wholesale would drop the element
  * the user has open and reset the selection on every unrelated write.
@@ -20,9 +20,9 @@
  * The selected value is written after the reconcile, never before: a `<select>`
  * silently refuses a value none of its options carry.
  */
-import { blit } from '../../.plugin/core/index.js';
-import { reconcileKeyedList } from '../../.plugin/addons/keyed-list.js';
-import { leadingText, setText, widget, widgetSpec } from '../../.plugin/addons/widget.js';
+import { blit } from 'cloudcanvas';
+import { reconcileKeyedList } from '../plugins/keyed-list.js';
+import { leadingText, setText, widget, widgetSpec } from '../plugins/widget.js';
 import { asText } from '../coerce.js';
 import { injectLibStyles } from '../styles.js';
 import { commitOn, linkLabel, renderLabel, setFlag } from './control.js';

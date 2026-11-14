@@ -2,7 +2,7 @@
  * CloudCanvas - NeoTec, LLC, Richard Christopher
  * Written by Richard Christopher, Copyright 2026 NeoTec, LLC
  *
- * The display group (`cloudcanvas/display`): text, badge, avatar, divider,
+ * The display group (`cloudcanvas-lib/display`): text, badge, avatar, divider,
  * progress, spinner, alert and the keyed list - each a widget (`./widget.js`):
  * one template, one render, contents under the trait of its type's name.
  *

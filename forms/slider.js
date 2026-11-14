@@ -21,8 +21,8 @@
  * user is dragging past is real text a screen reader can be pointed at - and
  * the native range already publishes `aria-valuenow` for itself.
  */
-import { blit } from '../../.plugin/core/index.js';
-import { leadingText, setAttr, setText, widget, widgetSpec } from '../../.plugin/addons/widget.js';
+import { blit } from 'cloudcanvas';
+import { leadingText, setAttr, setText, widget, widgetSpec } from '../plugins/widget.js';
 import { toNumber } from '../coerce.js';
 import { injectLibStyles } from '../styles.js';
 import { commitOn, linkLabel, renderLabel, setFlag, stopAtControl } from './control.js';

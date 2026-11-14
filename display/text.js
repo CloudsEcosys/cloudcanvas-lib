@@ -17,7 +17,7 @@
  * assignment would take the structural class down with it, and `toggle` only
  * touches the attribute when the token set actually changes.
  */
-import { leadingText, setText } from '../../.plugin/addons/widget.js';
+import { leadingText, setText } from '../plugins/widget.js';
 import { defineWidget, elementAs } from './widget.js';
 
 /** Class the shared stylesheet hangs every Text rule off. */

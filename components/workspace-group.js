@@ -14,13 +14,13 @@
  * there, placed from the well's origin. The badge counts the well's blits and
  * follows them as they come and go, through one observer per element that
  * stops when the workspace is removed. How the camera frames the workspace is
- * its `focus` spec key (`cloudcanvas/focus`: `padding`, `maxZoom`); promoting it
- * goes through the root's history (`cloudcanvas/history`), so Back returns.
+ * its `focus` spec key (`cloudcanvas-lib/focus`: `padding`, `maxZoom`); promoting it
+ * goes through the root's history (`cloudcanvas-lib/history`), so Back returns.
  */
-import { blit } from '../../.plugin/core/index.js';
-import { focus } from '../../.plugin/addons/focus.js';
-import { go } from '../../.plugin/addons/history.js';
-import { leadingText, setText, widget, widgetSpec } from '../../.plugin/addons/widget.js';
+import { blit } from 'cloudcanvas';
+import { focus } from '../plugins/focus.js';
+import { go } from '../plugins/history.js';
+import { leadingText, setText, widget, widgetSpec } from '../plugins/widget.js';
 import { appOf, withDefaults } from './registrar.js';
 import { injectComponentStyles } from './styles.js';
 

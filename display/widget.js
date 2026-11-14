@@ -3,7 +3,7 @@
  * Written by Richard Christopher, Copyright 2026 NeoTec, LLC
  *
  * A display widget from one template and one render: `widget()`
- * (`cloudcanvas/widget`) plus the kit's stylesheet and a chromeless factory.
+ * (`cloudcanvas-lib/widget`) plus the kit's stylesheet and a chromeless factory.
  *
  *   const progress = defineWidget({ name: 'progress', html, allowedKeys: ['value', 'label'], bind, render });
  *   const bar = progress.create(app, { x: 40, y: 40, value: 40, label: 'Upload' });
@@ -17,7 +17,7 @@
  * `dismiss()` is the widget asking to go away: a cancelable `dismiss` event whose
  * default action - removing the blit - a listener stops with `preventDefault()`.
  */
-import { widget, widgetSpec } from '../../.plugin/addons/widget.js';
+import { widget, widgetSpec } from '../plugins/widget.js';
 import { injectLibStyles } from '../styles.js';
 
 /**

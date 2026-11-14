@@ -12,12 +12,12 @@
  * `aria-current="page"`, so the trail reads as navigation and the current place
  * is announced as such. The root name is a content key, so it renders like
  * everything else and survives a snapshot. An empty `title` shows the parent
- * widget's title. Back steps the root's history (`cloudcanvas/history`), found
+ * widget's title. Back steps the root's history (`cloudcanvas-lib/history`), found
  * from the blit itself, never a global.
  */
-import { blit } from '../../.plugin/core/index.js';
-import { back } from '../../.plugin/addons/history.js';
-import { contentOf, leadingText, setText, widget, widgetSpec } from '../../.plugin/addons/widget.js';
+import { blit } from 'cloudcanvas';
+import { back } from '../plugins/history.js';
+import { contentOf, leadingText, setText, widget, widgetSpec } from '../plugins/widget.js';
 import { appOf, withDefaults } from './registrar.js';
 import { injectComponentStyles } from './styles.js';
 

@@ -2,9 +2,9 @@
  * CloudCanvas - NeoTec, LLC, Richard Christopher
  * Written by Richard Christopher, Copyright 2026 NeoTec, LLC
  *
- * The UI kit's single door (`cloudcanvas/lib`): the forms group
- * (`./forms/index.js`, `cloudcanvas/forms`), the display group
- * (`./display/index.js`, `cloudcanvas/display`), the kit stylesheet, and the one
+ * The UI kit's single door (`cloudcanvas-lib`): the forms group
+ * (`./forms/index.js`, `cloudcanvas-lib/forms`), the display group
+ * (`./display/index.js`, `cloudcanvas-lib/display`), the kit stylesheet, and the one
  * call that defines the whole set. Import a group directly to pay for one.
  *
  * REGISTRATION IS EXPLICIT. Importing this module defines no type and names no

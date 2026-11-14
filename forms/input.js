@@ -13,7 +13,7 @@
  *   - **The edit lock is the design.** Every write re-renders, and an editor
  *     lives inside the render: a render during a keystroke takes the caret, the
  *     selection and the half-typed word with it. So `focus` takes the blit's edit
- *     lock (`cloudcanvas/edit`) and `blur` commits the typed value and then
+ *     lock (`cloudcanvas-lib/edit`) and `blur` commits the typed value and then
  *     releases it - in that order, because `end` replays exactly one deferred
  *     render and it must find the committed value already in place. Nothing
  *     touches the contents in between: keystrokes go out as a live `input`
@@ -25,9 +25,9 @@
  * The accessible name is the native one: a `<label for>` pointing at an id
  * derived from the blit's element id. No `aria-label` is written.
  */
-import { blit } from '../../.plugin/core/index.js';
-import { begin, end } from '../../.plugin/addons/edit.js';
-import { leadingText, setAttr, setContent, setVisible, widget, widgetSpec } from '../../.plugin/addons/widget.js';
+import { blit } from 'cloudcanvas';
+import { begin, end } from '../plugins/edit.js';
+import { leadingText, setAttr, setContent, setVisible, widget, widgetSpec } from '../plugins/widget.js';
 import { asText } from '../coerce.js';
 import { injectLibStyles } from '../styles.js';
 import { nameControl, renderLabel, setFlag, stopAtControl } from './control.js';

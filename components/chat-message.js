@@ -20,11 +20,11 @@
  * The composer is a `<form>`, so Enter and the Send button reach one `submit`;
  * it places the message in the container it sits in (its channel).
  */
-import { blit } from '../../.plugin/core/index.js';
-import { connect } from '../../.plugin/addons/connect.js';
-import { reconcileKeyedList } from '../../.plugin/addons/keyed-list.js';
-import { contentOf, leadingText, setAttr, setContent, setText, widget, widgetSpec } from '../../.plugin/addons/widget.js';
-import { contrastTextFor } from '../../.plugin/graphics/primitives/primitives.js';
+import { blit } from 'cloudcanvas';
+import { connect } from '../plugins/connect.js';
+import { reconcileKeyedList } from '../plugins/keyed-list.js';
+import { contentOf, leadingText, setAttr, setContent, setText, widget, widgetSpec } from '../plugins/widget.js';
+import { contrastTextFor } from 'cloudcanvas/primitives';
 import { asText } from '../coerce.js';
 import { keyedIndexOf, withDefaults } from './registrar.js';
 import { injectComponentStyles } from './styles.js';

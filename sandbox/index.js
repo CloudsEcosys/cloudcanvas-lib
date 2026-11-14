@@ -20,7 +20,7 @@
  * A barrel only. Every module here is importable on its own and they import each
  * other only downwards, so a page that only wants a zip writer pays for a zip
  * writer. The builder's product modules (custom types, the slotted type, the page
- * store) live in `.site`.
+ * store) live in cloudcanvas-site.
  */
 
 export { BOARD_TRAITS, allBlits, cameraOf, clearBoard, createBoard, freshId, retype } from './board.js';

@@ -30,8 +30,8 @@
  * no text is printed on.
  */
 
-import { leadingText, setAttr, setText, setVisible } from '../../.plugin/addons/widget.js';
-import { BADGE_TEXT_OVERRIDE_TOKEN } from '../../.plugin/graphics/primitives/primitives.js';
+import { leadingText, setAttr, setText, setVisible } from '../plugins/widget.js';
+import { BADGE_TEXT_OVERRIDE_TOKEN } from 'cloudcanvas/primitives';
 import { toneSurface } from './badge.js';
 import { defineWidget } from './widget.js';
 

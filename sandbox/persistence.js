@@ -29,7 +29,7 @@
  * changes are edits worth saving.
  */
 
-import { createLogger } from '../../.plugin/log.js';
+import { createLogger } from 'cloudcanvas/log';
 import { SandboxFormatError, deserializeBoard, serializeBoard } from './serialize.js';
 
 const logger = /* @__PURE__ */ createLogger('sandbox/persistence');

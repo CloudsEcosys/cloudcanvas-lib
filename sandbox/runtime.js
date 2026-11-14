@@ -10,10 +10,10 @@
 import { registerBaseTypes } from '../index.js';
 import { registerComponents } from '../components/index.js';
 
-export { blit, type } from '../../.plugin/core/index.js';
-export { go } from '../../.plugin/addons/history.js';
-export { reactionsOf } from '../../.plugin/addons/reactions.js';
-export { applyTheme } from '../../.plugin/graphics/theme.js';
+export { blit, type } from 'cloudcanvas';
+export { go } from '../plugins/history.js';
+export { reactionsOf } from '../plugins/reactions.js';
+export { applyTheme } from 'cloudcanvas/theme';
 export { allBlits, createBoard } from './board.js';
 export { LOADER_API as loaderApi } from './serialize.js';
 

@@ -19,9 +19,9 @@
  * key, seeded by the factory and kept in step by the toggle; the bar itself is
  * drawn from the items, so it can never disagree with the list it measures.
  */
-import { blit } from '../../.plugin/core/index.js';
-import { reconcileKeyedList } from '../../.plugin/addons/keyed-list.js';
-import { contentOf, leadingText, setAttr, setContents, setText, widget, widgetSpec } from '../../.plugin/addons/widget.js';
+import { blit } from 'cloudcanvas';
+import { reconcileKeyedList } from '../plugins/keyed-list.js';
+import { contentOf, leadingText, setAttr, setContents, setText, widget, widgetSpec } from '../plugins/widget.js';
 import { keyedIndexOf, withDefaults } from './registrar.js';
 import { injectComponentStyles } from './styles.js';
 

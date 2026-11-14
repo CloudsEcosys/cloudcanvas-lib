@@ -17,7 +17,7 @@
  * header is padded with empty cells so the grid stays rectangular; a longer one
  * keeps its extra cells.
  */
-import { blit, type } from '../../.plugin/core/index.js';
+import { blit, type } from 'cloudcanvas';
 import { injectArchetypeStyles } from './styles.js';
 
 /** The type name, which is also the trait its data rides on. */

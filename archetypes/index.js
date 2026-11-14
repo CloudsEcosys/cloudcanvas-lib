@@ -2,7 +2,7 @@
  * CloudCanvas - NeoTec, LLC, Richard Christopher
  * Written by Richard Christopher, Copyright 2026 NeoTec, LLC
  *
- * The archetypes (`cloudcanvas/archetypes`): page-building types on the core
+ * The archetypes (`cloudcanvas-lib/archetypes`): page-building types on the core
  * alone, for a site built of blits.
  *
  *   - `section`: a titled region whose children nest inside it (`./section.js`)

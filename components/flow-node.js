@@ -9,7 +9,7 @@
  *   createFlowNode(app, { id: 'b', title: 'Process' });
  *   transmitFlowPulse(app.find('a'));        // a flashes, then b
  *
- * The wires are the `connect` trait (`cloudcanvas/connect`), and the pulse
+ * The wires are the `connect` trait (`cloudcanvas-lib/connect`), and the pulse
  * travels them: a node hearing `flow:pulse` on itself flashes and emits it on
  * each blit its `connect.connections` names. Each hop carries the `relayChain`
  * of ids it has passed through, and a node never forwards into its own chain,
@@ -20,9 +20,9 @@
  * inline border or shadow. The transmit control is a real `<button>`, which
  * the drag add-on already treats as the page's, not a gesture.
  */
-import { blit } from '../../.plugin/core/index.js';
-import { connect } from '../../.plugin/addons/connect.js';
-import { leadingText, setText, widget, widgetSpec } from '../../.plugin/addons/widget.js';
+import { blit } from 'cloudcanvas';
+import { connect } from '../plugins/connect.js';
+import { leadingText, setText, widget, widgetSpec } from '../plugins/widget.js';
 import { withDefaults } from './registrar.js';
 import { injectComponentStyles } from './styles.js';
 

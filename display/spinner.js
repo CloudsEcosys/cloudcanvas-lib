@@ -12,7 +12,7 @@
  * seconds all live in the shared sheet, so one global rule covers every animated
  * widget in the kit instead of N inline `<style>` tags each having to remember
  * the same media query. The codebase already answers reduced motion this way
- * (`.plugin/graphics/styles-css.js`).
+ * (`plugins/styles-css.js`).
  *
  * The ring is not a separate decorative child, because there is nothing to hide
  * from it: the element has no text content, its shape is painted entirely by
@@ -21,7 +21,7 @@
  * which is the only failure mode this widget really has.
  */
 
-import { setAttr } from '../../.plugin/addons/widget.js';
+import { setAttr } from '../plugins/widget.js';
 import { defineWidget } from './widget.js';
 
 const NAME = 'spinner';

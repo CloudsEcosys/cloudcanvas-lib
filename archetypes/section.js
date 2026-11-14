@@ -15,7 +15,7 @@
  * The title is a text slot, so `fill` can never be markup. Styled by
  * `./styles.js`, by class, on existing core tokens.
  */
-import { type } from '../../.plugin/core/index.js';
+import { type } from 'cloudcanvas';
 import { injectArchetypeStyles } from './styles.js';
 
 /** The type name, and the class every part hangs off. */

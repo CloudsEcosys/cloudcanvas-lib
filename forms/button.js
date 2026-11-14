@@ -24,7 +24,7 @@
  * No colour, metric or class is decided here beyond *which* variant this is:
  * `../styles.js` states what a variant looks like, in tokens.
  */
-import { leadingText, setText, widget, widgetSpec } from '../../.plugin/addons/widget.js';
+import { leadingText, setText, widget, widgetSpec } from '../plugins/widget.js';
 import { injectLibStyles } from '../styles.js';
 
 /** The type name. */

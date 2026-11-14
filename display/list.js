@@ -14,7 +14,7 @@
  * direction of data flow, one owner per fact.
  *
  * Rows are reconciled by key rather than rebuilt: `reconcileKeyedList`
- * (`cloudcanvas/keyed-list`) reuses the element already holding an item's id, so
+ * (`cloudcanvas-lib/keyed-list`) reuses the element already holding an item's id, so
  * node identity - and therefore focus, scroll position and the row a screen
  * reader is sitting on - survives every write.
  *
@@ -22,9 +22,9 @@
  * than two per row, so a thousand rows cost what one does and a reconciled row
  * needs no rebinding.
  */
-import { blit } from '../../.plugin/core/index.js';
-import { KEY_ATTR, reconcileKeyedList } from '../../.plugin/addons/keyed-list.js';
-import { contentOf, leadingText, setText } from '../../.plugin/addons/widget.js';
+import { blit } from 'cloudcanvas';
+import { KEY_ATTR, reconcileKeyedList } from '../plugins/keyed-list.js';
+import { contentOf, leadingText, setText } from '../plugins/widget.js';
 import { defineWidget } from './widget.js';
 
 /** The type name; its contents live under the `libList` key. */
@@ -40,7 +40,7 @@ export const LIST_CLS = /* @__PURE__ */ Object.freeze({
 
 /**
  * The event a row activation emits, bubbling. Namespaced, and it has to be:
- * `select` alone is the select add-on's (`cloudcanvas/select`) - an ancestor
+ * `select` alone is the select add-on's (`cloudcanvas-lib/select`) - an ancestor
  * listening for "this blit is now selected" would read every row click as one.
  * Every component event is namespaced for the same reason (`note:edited`).
  */

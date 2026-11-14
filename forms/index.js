@@ -2,13 +2,13 @@
  * CloudCanvas - NeoTec, LLC, Richard Christopher
  * Written by Richard Christopher, Copyright 2026 NeoTec, LLC
  *
- * The forms group (`cloudcanvas/forms`): seven native controls as widgets -
+ * The forms group (`cloudcanvas-lib/forms`): seven native controls as widgets -
  * button, input, checkbox, radio (and radio group), toggle, slider, select.
  *
  *   const ok = createButton(app, { x: 40, y: 40, label: 'Save' });
  *   const agree = createCheckbox(app, { x: 40, y: 80, label: 'Agree' });
  *
- * Every control is a `widget()` (`cloudcanvas/widget`) on a real form element:
+ * Every control is a `widget()` (`cloudcanvas-lib/widget`) on a real form element:
  * its contents are the trait of its type's name, it names its control from the
  * blit's element id, commits through `setContent`, and re-issues the native
  * `input`/`change` as the blit's own (`b.emit`, bubbling). A button's press is

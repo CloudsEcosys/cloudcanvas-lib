@@ -12,7 +12,7 @@
  *
  *   - **The editor is in the template.** A `<textarea>` sits beside the body from
  *     the start and visibility picks one. Opening it takes the blit's edit lock
- *     (`cloudcanvas/edit`), so a render during a keystroke cannot destroy the
+ *     (`cloudcanvas-lib/edit`), so a render during a keystroke cannot destroy the
  *     caret; closing it commits first and releases second, so the one deferred
  *     render lands on the committed body. Escape hides the editor *before* the
  *     blur it causes can commit.
@@ -24,9 +24,9 @@
  *     `render` writes it as `--cc-sticky-tilt` and the sheet does the `rotate()`,
  *     so the widget never writes a `transform` and a theme can neutralise every tilt.
  */
-import { blit } from '../../.plugin/core/index.js';
-import { begin, end } from '../../.plugin/addons/edit.js';
-import { leadingText, setAttr, setContent, setText, setVisible, widget, widgetSpec } from '../../.plugin/addons/widget.js';
+import { blit } from 'cloudcanvas';
+import { begin, end } from '../plugins/edit.js';
+import { leadingText, setAttr, setContent, setText, setVisible, widget, widgetSpec } from '../plugins/widget.js';
 import { asText } from '../coerce.js';
 import { injectComponentStyles } from './styles.js';
 

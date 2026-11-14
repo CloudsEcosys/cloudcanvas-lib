@@ -22,8 +22,8 @@
  * own alt when the image *is* showing.
  */
 
-import { leadingText, setAttr, setText, setVisible } from '../../.plugin/addons/widget.js';
-import { safeUrl } from '../../.plugin/graphics/primitives/primitives.js';
+import { leadingText, setAttr, setText, setVisible } from '../plugins/widget.js';
+import { safeUrl } from 'cloudcanvas/primitives';
 import { defineWidget } from './widget.js';
 
 const NAME = 'avatar';

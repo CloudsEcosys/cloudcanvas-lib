@@ -16,9 +16,9 @@
  *
  * This module is the read path that ties them together, and re-exports the rest.
  */
-import { blit, type } from '../../.plugin/core/index.js';
-import { contentKeyOf, contentKeys } from '../../.plugin/addons/widget.js';
-import { safeUrl } from '../../.plugin/graphics/primitives/primitives.js';
+import { blit, type } from 'cloudcanvas';
+import { contentKeyOf, contentKeys } from '../plugins/widget.js';
+import { safeUrl } from 'cloudcanvas/primitives';
 import { readDocument } from './format.js';
 import { restoreTree } from './restore-tree.js';
 import { readBoardParts } from './board-parts.js';

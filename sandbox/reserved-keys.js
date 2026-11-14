@@ -4,7 +4,7 @@
  *
  * The reserved-key rule: which content keys a saved canvas or a custom-type
  * definition may never carry. One definition, shared by every surface that
- * enforces it - the builder's author/import gate and custom-type loader (`.site`)
+ * enforces it - the builder's author/import gate and custom-type loader (cloudcanvas-site)
  * import it from here, and the board loader (`./restore-tree.js`) holds the same
  * literals inline, because it is stringified into exported pages; a unit test
  * holds the inline copy equal to this one, by value and by behaviour.
@@ -14,7 +14,7 @@
  * any builder code is on the page.
  */
 
-/** The one content key a card renders as markup (`cloudcanvas/types`). */
+/** The one content key a card renders as markup (`cloudcanvas-lib/types`). */
 export const HTML_KEY = 'html';
 
 /**

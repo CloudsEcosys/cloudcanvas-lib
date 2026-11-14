@@ -16,8 +16,8 @@
  * announce add-on speaks it through the root's live region), because a change
  * of state a sighted user sees as a colour is one a screen reader must be told.
  */
-import { blit } from '../../.plugin/core/index.js';
-import { contentOf, leadingText, setAttr, setContents, setText, widget, widgetSpec } from '../../.plugin/addons/widget.js';
+import { blit } from 'cloudcanvas';
+import { contentOf, leadingText, setAttr, setContents, setText, widget, widgetSpec } from '../plugins/widget.js';
 import { asText } from '../coerce.js';
 import { withDefaults } from './registrar.js';
 import { injectComponentStyles } from './styles.js';

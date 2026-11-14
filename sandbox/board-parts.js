@@ -19,9 +19,9 @@
  * Each part is emitted only when it holds something, so an empty board is the
  * smallest document the format allows.
  */
-import { reactionsOf } from '../../.plugin/addons/reactions.js';
-import { TOKEN_PREFIX, applyTheme } from '../../.plugin/graphics/theme.js';
-import { createLogger } from '../../.plugin/log.js';
+import { reactionsOf } from '../plugins/reactions.js';
+import { TOKEN_PREFIX, applyTheme } from 'cloudcanvas/theme';
+import { createLogger } from 'cloudcanvas/log';
 
 const logger = /* @__PURE__ */ createLogger('sandbox/board-parts');
 

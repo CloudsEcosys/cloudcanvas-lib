@@ -6,7 +6,7 @@
  * message and a composer), two function traits, the stylesheet, and the one
  * call that registers the set.
  *
- * Every component is a widget (`cloudcanvas/widget`) with a `register<Name>()`
+ * Every component is a widget (`cloudcanvas-lib/widget`) with a `register<Name>()`
  * that defines it once and a `create<Name>(parent, options)` factory; the
  * behaviours a component exposes are plain functions taking the blit
  * (`toggleTaskItem`, `setTelemetryReading`, ...).
@@ -19,7 +19,7 @@
  *   registerComponents();
  *   app.blit({ type: 'task-card', taskCard: { title: 'Ship' }, editable: true, snapToGrid: { gridSize: 20 } });
  */
-import { blit } from '../../.plugin/core/index.js';
+import { blit } from 'cloudcanvas';
 
 /* ------------------ BOARD WIDGETS ------------------ */
 

@@ -23,8 +23,8 @@
  * wiring in the group at all. The group's element is its own scope
  * (`data-scope`), so its radios sit under its caption.
  */
-import { blit } from '../../.plugin/core/index.js';
-import { contentOf, leadingText, setAttr, setContent, widget, widgetSpec } from '../../.plugin/addons/widget.js';
+import { blit } from 'cloudcanvas';
+import { contentOf, leadingText, setAttr, setContent, widget, widgetSpec } from '../plugins/widget.js';
 import { asText } from '../coerce.js';
 import { injectLibStyles } from '../styles.js';
 import { hostId, linkLabel, renderLabel, setFlag, stopAtControl } from './control.js';

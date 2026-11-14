@@ -17,8 +17,8 @@
  * widget in this kit that has to write it is `./toggle.js`, and only because it
  * overrides the role.
  */
-import { blit } from '../../.plugin/core/index.js';
-import { leadingText, widget, widgetSpec } from '../../.plugin/addons/widget.js';
+import { blit } from 'cloudcanvas';
+import { leadingText, widget, widgetSpec } from '../plugins/widget.js';
 import { injectLibStyles } from '../styles.js';
 import { commitOn, linkLabel, renderLabel, setFlag } from './control.js';
 

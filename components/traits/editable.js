@@ -15,7 +15,7 @@
  *   - **The title's own node is never replaced.** The input is inserted
  *     *beside* the title and the title hidden; the Text node the widget writes
  *     through survives, so the next render still reaches it.
- *   - **The edit lock is taken** (`cloudcanvas/edit`). A render landing mid-edit
+ *   - **The edit lock is taken** (`cloudcanvas-lib/edit`). A render landing mid-edit
  *     is deferred; the commit writes the content with `setContent` and `end`
  *     then replays the one render, onto the committed value.
  *
@@ -23,8 +23,8 @@
  * input is closed before its blur can fire, and the blur finds the edit over.
  * Stopping the trait cancels an open edit.
  */
-import { begin, end, isEditing } from '../../../.plugin/addons/edit.js';
-import { contentKeyOf, contentOf, setContent } from '../../../.plugin/addons/widget.js';
+import { begin, end, isEditing } from '../../plugins/edit.js';
+import { contentKeyOf, contentOf, setContent } from '../../plugins/widget.js';
 
 /** The class the input carries; styled by `COMPONENT_DEFAULT_CSS`. */
 export const EDITABLE_INPUT_CLASS = 'cloudcanvas-editable-input';

@@ -33,13 +33,13 @@
  * which one it is.
  */
 
-import { leadingText, setAttr, setText, setVisible } from '../../.plugin/addons/widget.js';
+import { leadingText, setAttr, setText, setVisible } from '../plugins/widget.js';
 import {
   BADGE_SURFACE,
   BADGE_TEXT_OVERRIDE_TOKEN,
   compositeOver,
   contrastTextFor
-} from '../../.plugin/graphics/primitives/primitives.js';
+} from 'cloudcanvas/primitives';
 import { defineWidget } from './widget.js';
 
 const NAME = 'badge';

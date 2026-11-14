@@ -16,9 +16,9 @@
  * The bar is a native `<progress>`, tinted by `data-status` through the sheet
  * rather than by an inline background. The reading is fed by the caller through
  * `setTelemetryReading`; the gallery's random walk is the site's own
- * (`.site/telemetry-simulation.js`).
+ * (cloudcanvas-site `telemetry-simulation.js`).
  */
-import { contentOf, leadingText, setAttr, setContents, setText, widget, widgetSpec } from '../../.plugin/addons/widget.js';
+import { contentOf, leadingText, setAttr, setContents, setText, widget, widgetSpec } from '../plugins/widget.js';
 import { toNumber } from '../coerce.js';
 import { withDefaults } from './registrar.js';
 import { injectComponentStyles } from './styles.js';

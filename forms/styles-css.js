@@ -5,7 +5,7 @@
  * The kit's stylesheet, first half: the foundation rules and the form controls
  * (button, input, checkbox, radio, toggle, slider, select).
  *
- * Data, not code - the same reason `.plugin/graphics/styles-css.js` is its own file.
+ * Data, not code - the same reason `plugins/styles-css.js` is its own file.
  * The sheet is split in two along the line the kit itself is drawn on, controls
  * against display widgets, because one file of six hundred CSS lines is a file
  * nobody reads. `../styles.js` is the door: it concatenates both halves into
@@ -18,7 +18,7 @@
  * *alongside* the root class; every modifier rule is stated after its base rule,
  * so equal specificity resolves in the modifier's favour. This mirrors the core's
  * `cloudcanvas-card-*` convention (`CLS` in
- * `.plugin/addons/types.js`) at one more level of namespacing,
+ * `plugins/types.js`) at one more level of namespacing,
  * because this layer is separate and optional: a page that never imports it must
  * be unable to collide with it.
  *

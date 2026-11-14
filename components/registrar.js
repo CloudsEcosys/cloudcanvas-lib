@@ -9,8 +9,8 @@
  *
  * Nothing here registers anything; each component's `registerX()` does.
  */
-import { blit } from '../../.plugin/core/index.js';
-import { KEY_ATTR } from '../../.plugin/addons/keyed-list.js';
+import { blit } from 'cloudcanvas';
+import { KEY_ATTR } from '../plugins/keyed-list.js';
 
 /** The attribute every root collection's host carries. */
 const ROOT_SELECTOR = '[data-blit-root]';

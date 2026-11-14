@@ -16,10 +16,10 @@
  * `src` is written only while an image is showing, and only when it moved: an
  * `<img>` re-fetches on every assignment. The `focus` spec key frames it.
  */
-import { blit } from '../../.plugin/core/index.js';
-import { focus } from '../../.plugin/addons/focus.js';
-import { leadingText, setAttr, setText, setVisible, widget, widgetSpec } from '../../.plugin/addons/widget.js';
-import { safeUrl } from '../../.plugin/graphics/primitives/primitives.js';
+import { blit } from 'cloudcanvas';
+import { focus } from '../plugins/focus.js';
+import { leadingText, setAttr, setText, setVisible, widget, widgetSpec } from '../plugins/widget.js';
+import { safeUrl } from 'cloudcanvas/primitives';
 import { asText } from '../coerce.js';
 import { withDefaults } from './registrar.js';
 import { injectComponentStyles } from './styles.js';

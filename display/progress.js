@@ -22,7 +22,7 @@
  * because a fully tinted bar gives no reference for how full it is.
  */
 
-import { leadingText, setAttr, setText, setVisible } from '../../.plugin/addons/widget.js';
+import { leadingText, setAttr, setText, setVisible } from '../plugins/widget.js';
 import { toNumber } from '../coerce.js';
 import { defineWidget } from './widget.js';
 

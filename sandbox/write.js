@@ -19,10 +19,10 @@
  *   - `w`/`h` are the size in force, measured or declared;
  *   - `port` and `tint` (a gpu blit's colour, its `data-tint`) whenever set.
  */
-import { blit, type } from '../../.plugin/core/index.js';
-import { styleMap } from '../../.plugin/addons/style.js';
-import { contentKeyOf } from '../../.plugin/addons/widget.js';
-import { createLogger } from '../../.plugin/log.js';
+import { blit, type } from 'cloudcanvas';
+import { styleMap } from '../plugins/style.js';
+import { contentKeyOf } from '../plugins/widget.js';
+import { createLogger } from 'cloudcanvas/log';
 import { SANDBOX_FORMAT_VERSION } from './format.js';
 import { PROTOTYPE_KEYS } from './reserved-keys.js';
 import { NODE_KEYS } from './restore-tree.js';

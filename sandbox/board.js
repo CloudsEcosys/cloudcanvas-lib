@@ -14,38 +14,38 @@
  * the root add-ons: pan, the keyboard's single tab stop, the live region, the
  * cursors, history and reactions. Every blit then opts into its own - `drag`, `select`,
  * `resize`, `focus`, `connect`, `layout`, `style`, `sprite` and the rest - as spec keys.
- * A `sprite` carries its sheet inline (`cloudcanvas/sprites`), so a saved board, a
+ * A `sprite` carries its sheet inline (`cloudcanvas-lib/sprites`), so a saved board, a
  * reload and an exported page all show it as the element's CSS background.
  * The menu is the caller's: `menu(app, {registry})`.
  *
  *   allBlits(app)        every blit on the board, in document order
  *   freshId(app, prefix) an id no blit on the board carries
- *   cameraOf(app)        the board's flying camera (`cloudcanvas/motion`): pan, zoom, fit, screen <-> canvas
+ *   cameraOf(app)        the board's flying camera (`cloudcanvas-lib/motion`): pan, zoom, fit, screen <-> canvas
  *   retype(b, name)      the same blit (id, place, children) as another type
  *   clearBoard(app)      every blit and every board part gone (`./board-parts.js`)
  */
-import { blit } from '../../.plugin/core/index.js';
-import { announce } from '../../.plugin/addons/announce.js';
-import { connect } from '../../.plugin/addons/connect.js';
-import { cursors } from '../../.plugin/addons/cursors.js';
-import { drag } from '../../.plugin/addons/drag.js';
-import { edit } from '../../.plugin/addons/edit.js';
-import { focus } from '../../.plugin/addons/focus.js';
-import { history } from '../../.plugin/addons/history.js';
-import { keyboard } from '../../.plugin/addons/keyboard.js';
-import { gap, layout } from '../../.plugin/addons/layout.js';
-import { motion } from '../../.plugin/addons/motion.js';
-import { offload } from '../../.plugin/addons/offload.js';
-import { pan } from '../../.plugin/addons/pan.js';
-import { reactions } from '../../.plugin/addons/reactions.js';
-import { resize } from '../../.plugin/addons/resize.js';
-import { select } from '../../.plugin/addons/select.js';
-import { sprite } from '../../.plugin/addons/sprites.js';
-import { style } from '../../.plugin/addons/style.js';
-import { svgState } from '../../.plugin/addons/svg-state.js';
-import { registerDisplayTypes } from '../../.plugin/addons/types.js';
-import { injectBoardStyles } from '../../.plugin/graphics/styles.js';
-import { contentKeyOf } from '../../.plugin/addons/widget.js';
+import { blit } from 'cloudcanvas';
+import { announce } from '../plugins/announce.js';
+import { connect } from '../plugins/connect.js';
+import { cursors } from '../plugins/cursors.js';
+import { drag } from '../plugins/drag.js';
+import { edit } from '../plugins/edit.js';
+import { focus } from '../plugins/focus.js';
+import { history } from '../plugins/history.js';
+import { keyboard } from '../plugins/keyboard.js';
+import { gap, layout } from '../plugins/layout.js';
+import { motion } from '../plugins/motion.js';
+import { offload } from '../plugins/offload.js';
+import { pan } from '../plugins/pan.js';
+import { reactions } from '../plugins/reactions.js';
+import { resize } from '../plugins/resize.js';
+import { select } from '../plugins/select.js';
+import { sprite } from '../plugins/sprites.js';
+import { style } from '../plugins/style.js';
+import { svgState } from '../plugins/svg-state.js';
+import { registerDisplayTypes } from '../plugins/types.js';
+import { injectBoardStyles } from '../plugins/styles.js';
+import { contentKeyOf } from '../plugins/widget.js';
 import { clearBoardParts } from './board-parts.js';
 
 /** The traits a board names, blit and root alike. */

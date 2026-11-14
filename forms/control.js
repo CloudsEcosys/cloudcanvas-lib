@@ -10,7 +10,7 @@
  * with `b.emit(type, payload)`, the way a custom element encapsulates its inner
  * events: a listener on the blit hears one event, and it carries the payload.
  */
-import { setContent, setText, setVisible } from '../../.plugin/addons/widget.js';
+import { setContent, setText, setVisible } from '../plugins/widget.js';
 
 /** @type {WeakMap<Element, string>} a blit element with no id -> the id its controls are named from */
 const FALLBACK_IDS = /* @__PURE__ */ new WeakMap();

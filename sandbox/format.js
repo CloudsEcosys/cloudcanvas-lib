@@ -43,7 +43,7 @@
  * `./board-parts.js`; v1 is migrated on load by `./migrate-v1.js`.
  */
 
-import { createLogger } from '../../.plugin/log.js';
+import { createLogger } from 'cloudcanvas/log';
 import { V1_NODES_KEY, migrateV1 } from './migrate-v1.js';
 
 const logger = /* @__PURE__ */ createLogger('sandbox/format');
