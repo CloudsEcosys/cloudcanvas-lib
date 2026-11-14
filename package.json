@@ -1,0 +1,119 @@
+{
+  "name": "cloudcanvas-lib",
+  "version": "0.7.0",
+  "description": "CloudCanvas plugins: every add-on, the UI kit and the widgets, one entry each",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./forms": "./forms/index.js",
+    "./display": "./display/index.js",
+    "./components": "./components/index.js",
+    "./archetypes": "./archetypes/index.js",
+    "./sandbox": "./sandbox/index.js",
+    "./ui": "./ui/index.js",
+    "./ui/testing": "./ui/testing/index.js",
+    "./defaults": "./defaults.js",
+    "./graphics": "./plugins/styles.js",
+    "./drag": "./plugins/drag.js",
+    "./select": "./plugins/select.js",
+    "./resize": "./plugins/resize.js",
+    "./focus": "./plugins/focus.js",
+    "./physics": "./plugins/physics.js",
+    "./connect": "./plugins/connect.js",
+    "./svg-state": "./plugins/svg-state.js",
+    "./cursors": "./plugins/cursors.js",
+    "./pan": "./plugins/pan.js",
+    "./keyboard": "./plugins/keyboard.js",
+    "./menu": "./plugins/menu.js",
+    "./announce": "./plugins/announce.js",
+    "./observe": "./plugins/observe.js",
+    "./motion": "./plugins/motion.js",
+    "./types": "./plugins/types.js",
+    "./widget": "./plugins/widget.js",
+    "./keyed-list": "./plugins/keyed-list.js",
+    "./style": "./plugins/style.js",
+    "./layout": "./plugins/layout.js",
+    "./edit": "./plugins/edit.js",
+    "./place": "./plugins/place.js",
+    "./history": "./plugins/history.js",
+    "./reactions": "./plugins/reactions.js",
+    "./lazy": "./plugins/lazy.js",
+    "./offload": "./plugins/offload.js",
+    "./gpu": "./plugins/gpu.js",
+    "./orbit": "./plugins/orbit.js",
+    "./mesh": "./plugins/mesh.js",
+    "./svg-path": "./plugins/svg-path.js",
+    "./sprites": "./plugins/sprites.js",
+    "./text": "./plugins/text.js",
+    "./video": "./plugins/video.js",
+    "./own-canvas": "./plugins/own-canvas.js",
+    "./xml": "./plugins/xml.js",
+    "./html-canvas": "./plugins/html-canvas.js",
+    "./panel": "./plugins/panel.js",
+    "./dist/*": "./dist/*",
+    "./package.json": "./package.json"
+  },
+  "sideEffects": [
+    "./defaults.js",
+    "./dist/cloudcanvas-*.js"
+  ],
+  "files": [
+    "index.js",
+    "coerce.js",
+    "styles.js",
+    "defaults.js",
+    "plugins",
+    "ui",
+    "forms",
+    "display",
+    "components",
+    "archetypes",
+    "sandbox",
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "node scripts/build.js",
+    "check:dist": "node scripts/build.js --check",
+    "size": "node scripts/size.js",
+    "size:check": "node scripts/size.js --check",
+    "test": "node --test --import ./tests/helpers/setup.js tests/unit/*.test.js tests/integration/*.test.js",
+    "test:unit": "node --test --import ./tests/helpers/setup.js tests/unit/*.test.js",
+    "test:browser": "node --test --test-concurrency=1 tests/browser/*.test.js"
+  },
+  "keywords": [
+    "canvas",
+    "gui",
+    "blit",
+    "dom",
+    "infinite-canvas",
+    "cloudcanvas"
+  ],
+  "author": "Richard Christopher, NeoTec, LLC",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CloudsEcosys/cloudcanvas-lib.git"
+  },
+  "bugs": {
+    "url": "https://github.com/CloudsEcosys/cloudcanvas-lib/issues"
+  },
+  "homepage": "https://github.com/CloudsEcosys/cloudcanvas-lib#readme",
+  "engines": {
+    "node": ">=20"
+  },
+  "peerDependencies": {
+    "cloudcanvas": ">=0.7.0 <0.8.0"
+  },
+  "devDependencies": {
+    "@happy-dom/global-registrator": "^20.12.0",
+    "axe-core": "^4.14.0",
+    "cloudcanvas": "git+file:///tmp/cloudcanvas/split-20261114/cloudcanvas#split/0.7",
+    "esbuild": "^0.28.2",
+    "happy-dom": "^20.12.0",
+    "playwright": "^1.62.1"
+  }
+}
