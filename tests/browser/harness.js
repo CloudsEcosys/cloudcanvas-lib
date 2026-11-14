@@ -11,9 +11,10 @@
  */
 import http from 'node:http';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync } from 'node:fs';
-import { createReadStream } from 'node:fs';
+import { once } from 'node:events';
+import { createReadStream, mkdirSync } from 'node:fs';
 import { readFile, stat } from 'node:fs/promises';
+import { pipeline } from 'node:stream/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { containRequest, pathnameOf } from '../../scripts/served-path.js';
@@ -89,15 +90,33 @@ async function serveFile(rootDir, req, res) {
   }
 
   const extension = path.extname(filePath);
-  res.writeHead(200, {
-    'content-type': MIME_TYPES[extension] || 'application/octet-stream',
-    'cache-control': 'no-store'
-  });
-  if (extension !== '.html') {
-    createReadStream(filePath).pipe(res);
+  const headers = { 'content-type': MIME_TYPES[extension] || 'application/octet-stream', 'cache-control': 'no-store' };
+  if (extension === '.html') {
+    const html = withImportMap(await readFile(filePath, 'utf8'), importMapFor(rootDir));
+    res.writeHead(200, headers).end(html);
     return;
   }
-  res.end(withImportMap(await readFile(filePath, 'utf8'), importMapFor(rootDir)));
+  await streamFile(filePath, res, headers);
+}
+
+/**
+ * Stream a file once it has opened, so an open failure is still a 500; a read
+ * failure after the headers went out destroys the response (`pipeline`).
+ */
+async function streamFile(filePath, res, headers) {
+  const stream = createReadStream(filePath);
+  await once(stream, 'open');
+  res.writeHead(200, headers);
+  await pipeline(stream, res);
+}
+
+/** A request that failed: 500 while the headers are unsent, else cut the response short. */
+function failRequest(res) {
+  if (res.headersSent) {
+    res.destroy();
+    return;
+  }
+  res.writeHead(500, { 'content-type': 'text/plain' }).end('Server error');
 }
 
 /**
@@ -106,9 +125,7 @@ async function serveFile(rootDir, req, res) {
  */
 export async function startStaticServer(rootDir = REPO_ROOT) {
   const server = http.createServer((req, res) => {
-    serveFile(rootDir, req, res).catch(() => {
-      res.writeHead(500, { 'content-type': 'text/plain' }).end('Server error');
-    });
+    serveFile(rootDir, req, res).catch(() => failRequest(res));
   });
 
   await new Promise((resolve, reject) => {
