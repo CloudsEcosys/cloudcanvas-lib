@@ -10,6 +10,11 @@
  *   node scripts/build.js            rebuild `dist/` and print the size report
  *   node scripts/build.js --check    rebuild in memory; exit 1 if `dist/` differs
  *
+ * Every artifact is built in memory first and written to a staging directory
+ * beside `dist/`, which is then swapped in whole: a build that fails leaves the
+ * committed `dist/` as it was, and a file the build no longer makes is gone.
+ * `--check` names any file under `dist/` that differs, is missing or is not built.
+ *
  * `dist/` is committed and load-bearing: the browser suites fetch the board
  * runtime over http and the sandbox's static export embeds it, so a stale dist
  * is a real defect and `--check` is the gate that catches one. The unit suites
@@ -39,10 +44,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
+import { fileURLToPath } from 'node:url';
 import * as esbuild from 'esbuild';
 import { CORE_EXTERNAL, ROOT, publicEntries, readManifest } from './entries.js';
 
-const OUT_DIR = path.join(ROOT, 'dist');
+/** The output directory, relative to the root. */
+const DIST_DIR = 'dist';
+
+const OUT_DIR = path.join(ROOT, DIST_DIR);
 
 /** The split output's directory, relative to the root. */
 const ESM_DIR = 'dist/esm';
@@ -69,6 +78,7 @@ const BANNER = [
  * does not have to and the ESM output stays close to the source it came from.
  */
 const SHARED = {
+  absWorkingDir: ROOT,
   bundle: true,
   platform: 'browser',
   target: ['es2022'],
@@ -100,25 +110,24 @@ function reportMessages(label, messages, kind) {
 }
 
 /**
- * Bundle one artifact. With `write` off the bytes stay in memory, which is how
- * `--check` compares against the committed file without touching it.
+ * Bundle one artifact, in memory: the caller writes it, or compares it with the
+ * committed file, so `--check` sees the same bytes a build would.
  * @returns {Promise<{outfile: string, bytes: Uint8Array, modules: number}>}
  */
-async function buildTarget(target, write) {
+async function buildTarget(target) {
   const { outfile, entry, ...options } = target;
   const result = await esbuild.build({
     ...SHARED,
     ...options,
     entryPoints: [path.join(ROOT, entry)],
-    write,
+    write: false,
     outfile: path.join(ROOT, outfile)
   });
 
   reportMessages(outfile, result.warnings, 'warning');
 
   const output = Object.values(result.metafile.outputs)[0];
-  const bytes = write ? fs.readFileSync(path.join(ROOT, outfile)) : result.outputFiles[0].contents;
-  return { outfile, bytes, modules: Object.keys(output.inputs).length };
+  return { outfile, bytes: result.outputFiles[0].contents, modules: Object.keys(output.inputs).length };
 }
 
 /**
@@ -160,22 +169,50 @@ function byEntryThenChunk(entryFiles) {
   return (a, b) => rank(a.outfile) - rank(b.outfile) || a.outfile.localeCompare(b.outfile);
 }
 
-/** Put the split output on disk, directories included. */
-function writeSplit(built) {
-  for (const { outfile, bytes } of built) {
-    const target = path.join(ROOT, outfile);
-    fs.mkdirSync(path.dirname(target), { recursive: true });
-    fs.writeFileSync(target, bytes);
+/**
+ * Make `outDir` hold exactly `built` (each `outfile` relative to `root`): write
+ * them into a staging directory beside it, then swap that in. A failure while
+ * writing leaves `outDir` untouched and removes the staging directory.
+ * @param {string} outDir absolute
+ * @param {Array<{outfile: string, bytes: Uint8Array}>} built
+ */
+export function replaceDir(outDir, built, root = ROOT) {
+  const staging = fs.mkdtempSync(`${outDir}.staging-`);
+  try {
+    for (const { outfile, bytes } of built) {
+      const target = path.join(staging, path.relative(outDir, path.join(root, outfile)));
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.writeFileSync(target, bytes);
+    }
+  } catch (error) {
+    fs.rmSync(staging, { recursive: true, force: true });
+    throw error;
   }
+  swapIn(staging, outDir);
 }
 
-/** Every file under `dir` (relative to the root), recursively; none when it is absent. */
-function filesUnder(dir) {
-  const absolute = path.join(ROOT, dir);
+/** Rename `staging` to `outDir`, retiring the old one; restore it if the rename fails. */
+function swapIn(staging, outDir) {
+  const retired = `${outDir}.retired-${process.pid}`;
+  const hadOld = fs.existsSync(outDir);
+  if (hadOld) fs.renameSync(outDir, retired);
+  try {
+    fs.renameSync(staging, outDir);
+  } catch (error) {
+    if (hadOld) fs.renameSync(retired, outDir);
+    fs.rmSync(staging, { recursive: true, force: true });
+    throw error;
+  }
+  fs.rmSync(retired, { recursive: true, force: true });
+}
+
+/** Every file under `dir` (relative to `root`), recursively; none when it is absent. */
+function filesUnder(dir, root) {
+  const absolute = path.join(root, dir);
   if (!fs.existsSync(absolute)) return [];
   return fs.readdirSync(absolute, { recursive: true, withFileTypes: true })
     .filter((entry) => entry.isFile())
-    .map((entry) => path.relative(ROOT, path.join(entry.parentPath, entry.name)));
+    .map((entry) => path.relative(root, path.join(entry.parentPath, entry.name)));
 }
 
 /** Raw, gzip and (informational) module count for one artifact. */
@@ -189,15 +226,17 @@ function measure({ outfile, bytes, modules }) {
 }
 
 /**
- * The artifacts whose committed bytes differ from a fresh build, plus any file
- * in the split directory the build no longer makes (a chunk whose hash moved);
- * empty is a pass.
+ * Any file under `dist/` the build no longer makes (a chunk whose hash moved, a
+ * renamed artifact), then each artifact whose committed bytes differ from a
+ * fresh build or are missing; empty is a pass.
+ * @param {Array<{outfile: string, bytes: Uint8Array}>} built
+ * @returns {string[]}
  */
-function findStale(built) {
+export function findStale(built, root = ROOT) {
   const expected = new Set(built.map(({ outfile }) => outfile));
-  const stale = filesUnder(ESM_DIR).filter((file) => !expected.has(file)).map((file) => `${file}: not built`);
+  const stale = filesUnder(DIST_DIR, root).filter((file) => !expected.has(file)).map((file) => `${file}: not built`);
   for (const { outfile, bytes } of built) {
-    const committed = path.join(ROOT, outfile);
+    const committed = path.join(root, outfile);
     if (!fs.existsSync(committed)) {
       stale.push(`${outfile}: missing`);
       continue;
@@ -235,28 +274,24 @@ function printReport(rows) {
 async function main() {
   const flag = process.argv[2];
   if (flag !== undefined && flag !== '--check') throw new Error(`Unknown flag ${flag}; expected --check`);
-  const write = flag !== '--check';
-
-  if (write) {
-    fs.rmSync(OUT_DIR, { recursive: true, force: true });
-    fs.mkdirSync(OUT_DIR, { recursive: true });
-  }
 
   const built = [];
-  for (const target of TARGETS) built.push(await buildTarget(target, write));
-  const split = await buildSplit();
-  if (write) writeSplit(split);
-  built.push(...split);
+  for (const target of TARGETS) built.push(await buildTarget(target));
+  built.push(...(await buildSplit()));
 
+  if (flag !== '--check') replaceDir(OUT_DIR, built);
   printReport(built.map(measure));
-  if (!write) check(built);
+  if (flag === '--check') check(built);
 }
 
-main().catch((error) => {
+/** esbuild's own messages when it has them, else the error. */
+function reportFailure(error) {
   if (Array.isArray(error.errors) && error.errors.length > 0) {
     console.error(esbuild.formatMessagesSync(error.errors, { kind: 'error', color: true }).join('\n'));
   } else {
     console.error(error);
   }
   process.exitCode = 1;
-});
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) main().catch(reportFailure);
