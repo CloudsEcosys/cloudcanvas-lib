@@ -9,7 +9,10 @@
  * test seams (`cloudcanvas/testing`, `cloudcanvas/style-gates`) are for tests and
  * scripts only: no shipped module imports them. Inside the
  * package, imports are relative. No file names a cc-main layout path
- * (`.plugin`, `.addons`, `.site`) or reaches into `node_modules` by path.
+ * (`.plugin`, `.addons`, `.site`) or reaches into `node_modules` by path; no
+ * shipped file builds a relative or `node_modules` path at run time
+ * (`import.meta.resolve`, `new URL`) or names
+ * `node_modules` at all.
  *
  * The engine half (the add-ons in `plugins/`, the UI kit in `ui/`, `defaults.js`)
  * imports nothing from the widget half (the kit and its groups, the archetypes,
@@ -88,6 +91,22 @@ test('boundary - the core is reached only by a specifier its exports name', () =
 test('boundary - no path names the cc-main layout or reaches into node_modules', () => {
   const layout = (spec) => /(^|\/)\.(plugin|addons|site)(\/|$)|(^|\/)node_modules(\/|$)/.test(spec);
   assert.deepEqual(offendersIn([...SHIPPED, ...TOOLS], layout), []);
+});
+
+/** A path a module builds at run time: `import.meta.resolve(...)` or `new URL(...)` on a relative or `node_modules` string. */
+const RUNTIME_PATH = /(?:\bimport\.meta\.resolve|\bnew\s+URL)\s*\(\s*(['"`])((?:\.|[^'"`]*node_modules)[^'"`]*)\1/g;
+
+/** Offenders across shipped `files`: each run-time path, and any `node_modules` named at all. */
+function runtimePathsIn(files) {
+  return files.flatMap((file) => {
+    const source = readFileSync(file, 'utf8');
+    const built = [...source.matchAll(RUNTIME_PATH)].map((match) => where(file, match[0]));
+    return source.includes('node_modules') && built.length === 0 ? [where(file, 'node_modules')] : built;
+  });
+}
+
+test('boundary - no shipped module builds a path at run time or names node_modules', () => {
+  assert.deepEqual(runtimePathsIn(SHIPPED), []);
 });
 
 test('boundary - a shipped module imports the core (no test seam), a published entry of its own, or a file inside the package', () => {
