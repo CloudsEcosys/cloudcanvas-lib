@@ -23,7 +23,8 @@
  *   +<file>  each file an add-on loads by `import()` only, on its own.
  *
  *   node scripts/size.js            print the table
- *   node scripts/size.js --check    exit 1 if any row grew past the baseline
+ *   node scripts/size.js --check    exit 1 if any row grew past the baseline, has
+ *                                   no baseline row, or a baseline row is stale
  *   node scripts/size.js --update   rewrite `scripts/size-baseline.json`
  *
  * Single dependency: esbuild, a devDependency.
@@ -31,6 +32,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import zlib from 'node:zlib';
 import * as esbuild from 'esbuild';
 import { ROOT, publicEntries } from './entries.js';
@@ -138,33 +140,41 @@ function writeBaseline(rows) {
 }
 
 /**
- * One line per metric that grew; an empty list is a pass. A row the baseline
- * does not know yet cannot have grown: it is reported, and `--update` ratchets it.
+ * One line per problem; an empty list is a pass. A row grew past its baseline,
+ * a row has no baseline (a new entry is ratcheted with `--update`, never waved
+ * through), or a baseline row names an entry no longer measured (stale).
+ * @param {Array<{name: string, min: number, gzip: number}>} rows
+ * @param {Record<string, {min: number, gzip: number}>} baseline
+ * @returns {string[]}
  */
-function findGrowth(rows, baseline) {
-  const growth = [];
+export function sizeProblems(rows, baseline) {
+  const problems = [];
   for (const row of rows) {
     const base = baseline[row.name];
     if (!base) {
-      console.warn(`${row.name}: no baseline yet; run with --update to ratchet it`);
+      problems.push(`${row.name}: no baseline row`);
       continue;
     }
     for (const metric of ['min', 'gzip']) {
       if (row[metric] > base[metric]) {
-        growth.push(`${row.name} ${metric}: ${base[metric]} -> ${row[metric]} (+${row[metric] - base[metric]} B)`);
+        problems.push(`${row.name} ${metric}: ${base[metric]} -> ${row[metric]} (+${row[metric] - base[metric]} B)`);
       }
     }
   }
-  return growth;
+  const measured = new Set(rows.map(({ name }) => name));
+  for (const name of Object.keys(baseline).filter((key) => !measured.has(key))) {
+    problems.push(`${name}: stale baseline row (no such entry)`);
+  }
+  return problems;
 }
 
 function check(rows) {
-  const growth = findGrowth(rows, readBaseline());
-  if (growth.length === 0) {
-    console.log('\nSize check passed: no row grew.');
+  const problems = sizeProblems(rows, readBaseline());
+  if (problems.length === 0) {
+    console.log('\nSize check passed: no row grew; the baseline names every entry and no other.');
     return;
   }
-  console.error(`\nSize check failed:\n  ${growth.join('\n  ')}`);
+  console.error(`\nSize check failed:\n  ${problems.join('\n  ')}`);
   console.error('Intentional? Re-run with --update.');
   process.exitCode = 1;
 }
@@ -180,11 +190,14 @@ async function main() {
   else if (flag !== undefined) throw new Error(`Unknown flag ${flag}; expected --check or --update`);
 }
 
-main().catch((error) => {
+/** esbuild's own messages when it has them, else the error's. */
+function reportFailure(error) {
   if (Array.isArray(error.errors) && error.errors.length > 0) {
     console.error(esbuild.formatMessagesSync(error.errors, { kind: 'error', color: true }).join('\n'));
   } else {
     console.error(error.message ?? error);
   }
   process.exitCode = 1;
-});
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) main().catch(reportFailure);
