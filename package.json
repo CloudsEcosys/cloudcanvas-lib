@@ -56,7 +56,7 @@
   },
   "sideEffects": [
     "./defaults.js",
-    "./dist/cloudcanvas-*.js"
+    "./dist/cloudcanvas*.js"
   ],
   "files": [
     "index.js",
@@ -109,11 +109,11 @@
     "cloudcanvas": ">=0.7.0 <0.8.0"
   },
   "devDependencies": {
-    "@happy-dom/global-registrator": "^20.12.0",
+    "@happy-dom/global-registrator": "20.12.0",
     "axe-core": "^4.14.0",
     "cloudcanvas": "git+file:///tmp/cloudcanvas/split-20261114/cloudcanvas#split/0.7",
     "esbuild": "^0.28.2",
-    "happy-dom": "^20.12.0",
-    "playwright": "^1.62.1"
+    "happy-dom": "20.12.0",
+    "playwright": "1.62.1"
   }
 }
