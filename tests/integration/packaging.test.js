@@ -161,6 +161,14 @@ test('sideEffects - the archetypes register by a call and import only the core: 
   assert.equal((await bundle(`import '${manifest.name}/archetypes';`)).length, 0, 'the archetypes kept code');
 });
 
+test('tooling - esbuild, which writes dist/, is pinned to the exact version the lockfile installs', () => {
+  const lock = JSON.parse(fs.readFileSync(path.join(ROOT, 'package-lock.json'), 'utf8'));
+  const locked = lock.packages['node_modules/esbuild'].version;
+  assert.equal(manifest.devDependencies.esbuild, locked);
+  assert.equal(lock.packages[''].devDependencies.esbuild, locked, 'the lockfile root disagrees with package.json');
+  assert.equal(esbuild.version, locked, 'the installed esbuild is not the locked one');
+});
+
 /** The files under `base` a `./dir/name` pattern (a `*` only in the last segment) matches. */
 function matches(base, pattern) {
   const relative = pattern.replace(/^\.\//, '');
