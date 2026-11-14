@@ -43,7 +43,7 @@ export function isWithin(rootDir, candidate) {
 function reachesClosedModules(segments) {
   const at = segments.indexOf(NODE_MODULES);
   if (at === -1) return false;
-  if (at !== 0 || !SERVED_PACKAGES.includes(segments[1])) return true;
+  if (at !== 0 || !SERVED_PACKAGES.includes(segments[1]) || segments.length < 3) return true;
   return segments.indexOf(NODE_MODULES, 1) !== -1;
 }
 
