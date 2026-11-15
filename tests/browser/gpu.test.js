@@ -80,4 +80,27 @@ function registerSuite(launcher) {
       await page.close();
     });
   }
+
+  test('gpu (webgl2) - when the browser takes the context away, another backend draws the same pixels on a new canvas', async () => {
+    const page = await ctx.browser.newPage();
+    const errors = [];
+    page.on('pageerror', (error) => errors.push(String(error)));
+    await page.goto(`${ctx.server.url}${FIXTURE}?backend=webgl2`);
+    assert.equal(await page.evaluate(() => window.__gpu.ready), 'webgl2');
+    await frames(page, 100);
+    const points = [[320, 120], [400, 190], [600, 300]];
+    const before = await page.evaluate((at) => window.__gpu.pixels(at), points);
+    assertPixel(before[0], [255, 0, 0, 255], 'red alone');
+
+    for (const round of [1, 2]) {
+      assert.equal(await page.evaluate(() => window.__gpu.lose()), true, `loss ${round}: a new canvas replaced the lost one`);
+      await frames(page, 100);
+      const after = await page.evaluate((at) => window.__gpu.pixels(at), points);
+      after.forEach((pixel, k) => assertPixel(pixel, before[k], `loss ${round}: point ${k} as before`));
+      assert.equal(await page.evaluate(() => document.getElementById('red').style.opacity), '0', `loss ${round}: still a proxy`);
+    }
+    assert.equal(await page.evaluate(() => window.__gpu.kind()), 'webgl2');
+    assert.deepEqual(errors, []);
+    await page.close();
+  });
 }

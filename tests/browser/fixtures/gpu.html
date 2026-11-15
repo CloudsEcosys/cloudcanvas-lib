@@ -33,6 +33,14 @@
       ready: controller.ready.then((kind) => kind, (error) => `error: ${error.message}`),
       tilt(fields) { Object.assign(root.camera, fields); schedule(root); },
       project: (x, y) => root.camera.project(x, y, root.hostRect),
+      kind: () => controller.kind,
+      // Take the WebGL2 context away, as a browser does under pressure; resolves once another backend is drawing on a new canvas.
+      async lose() {
+        const before = controller.canvas;
+        before.getContext('webgl2').getExtension('WEBGL_lose_context').loseContext();
+        while (controller.canvas === before || !controller.kind) await new Promise((resolve) => setTimeout(resolve, 20));
+        return controller.canvas !== before && !before.isConnected;
+      },
       async pixels(points) {
         const { width, data } = await controller.snapshot();
         return points.map(([x, y]) => {

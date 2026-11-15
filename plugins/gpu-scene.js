@@ -68,6 +68,9 @@ export const FIELD = /* @__PURE__ */ Object.freeze({
  * @property {() => Promise<{width: number, height: number, data: Uint8Array}>} read the last frame's pixels,
  *   RGBA8 premultiplied, rows top to bottom; called in the same task as `draw`
  * @property {() => void} destroy
+ * @property {Promise<string>} [lost] resolves once, with the reason, when the browser takes the GPU from under
+ *   this backend (a lost context or device) and it can no longer draw; never when it is destroyed. `gpu(app)`
+ *   then destroys it and starts another. A backend without it is never restarted.
  */
 
 /** Canvas to clip space: `camera.projected`, then the host box to [-1, 1] (y up), depth scaled into `depthRange`

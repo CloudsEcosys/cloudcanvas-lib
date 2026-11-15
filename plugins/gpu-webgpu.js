@@ -338,14 +338,19 @@ export async function createBackend(canvas, options = {}) {
     device, context, format, resources, textures: new Map(), groups: new Map(),
     instances: null, depth: null, target: null, lost: false
   };
+  let gone;
+  const lost = new Promise((resolve) => { gone = resolve; });
   device.lost.then((info) => {
-    if (info.reason !== 'destroyed') logger.error(`device lost (${info.reason}): ${info.message}`);
     state.lost = true;
+    if (info.reason === 'destroyed') return;
+    logger.error(`device lost (${info.reason}): ${info.message}`);
+    gone(info.reason || 'device lost');
   });
   device.addEventListener('uncapturederror', (event) => logger.error('uncaptured error', event.error));
   return {
     kind: 'webgpu',
     depthRange: 'zero-to-one',
+    lost,
     texture: (id, source) => uploadTexture(state, id, source),
     dropTexture(id) {
       state.textures.get(id)?.texture.destroy();

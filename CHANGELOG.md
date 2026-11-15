@@ -5,6 +5,17 @@ All notable changes to `cloudcanvas-lib`. Versions follow semantic versioning; t
 surface, not the commit history. Releases before 0.7.0, when these files shipped inside the `cloudcanvas`
 package, are recorded in [the cloudcanvas CHANGELOG](https://github.com/CloudsEcosys/cloudcanvas/blob/main/CHANGELOG.md).
 
+## Unreleased
+
+### Fixed
+
+- `gpu(app)` recovers when the browser takes the GPU away. A lost WebGL2 context or WebGPU device used to stop
+  a root's GPU drawing for good: its gpu blits stayed invisible proxies until the page was reloaded. A backend
+  now reports the loss (`lost`, an optional promise on the `GpuBackend` contract in `plugins/gpu-scene.js`), and
+  the root destroys it, starts another on a fresh canvas and sends the scene again. `controller.canvas` and
+  `controller.kind` follow the backend in use; `controller.ready` is still the first one's. Three restarts within
+  ten seconds are the limit: after that the blits stay proxies. A custom backend without `lost` is never restarted.
+
 ## 0.7.1
 
 ### Fixed

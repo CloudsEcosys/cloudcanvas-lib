@@ -311,7 +311,8 @@ function destroyState(state) {
 
 /**
  * A WebGL2 `GpuBackend` (see `./gpu-scene.js`) drawing into `canvas`; rejects when the canvas has no WebGL2
- * context. On `webglcontextlost` drawing and uploads stop (the loss is logged) until the backend is destroyed.
+ * context. On `webglcontextlost` drawing and uploads stop for good (the loss is logged) and `lost` resolves: the
+ * owner destroys this backend and makes another on a fresh canvas, as `gpu(app)` does.
  * @param {HTMLCanvasElement|OffscreenCanvas} canvas
  * @param {object} [options] none are read by this backend
  * @returns {Promise<import('./gpu-scene.js').GpuBackend>}
@@ -320,15 +321,19 @@ export async function createBackend(canvas, options = {}) {
   const gl = canvas.getContext('webgl2', CONTEXT_ATTRIBUTES);
   if (!gl || gl.isContextLost()) throw new Error('gpu-webgl2: no WebGL2 context on this canvas');
   const state = createState(gl, canvas);
+  let gone;
+  const lost = new Promise((resolve) => { gone = resolve; });
   const onLost = (event) => {
     event.preventDefault();
     state.lost = true;
     logger.warn('WebGL2 context lost; drawing stops');
+    gone('context lost');
   };
   canvas.addEventListener('webglcontextlost', onLost);
   return Object.freeze({
     kind: 'webgl2',
     depthRange: 'minus-one-to-one',
+    lost,
     texture: (id, source) => uploadTexture(state, id, source),
     dropTexture: (id) => dropTexture(state, id),
     mesh: (id, geometry) => {

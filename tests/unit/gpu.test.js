@@ -308,6 +308,79 @@ test('gpu - a backend that throws costs that frame, never the root\'s loop', asy
   assert.deepEqual(rec.draws().at(-1).boxes[0], [4, 0, 8, 8], 'the next frame draws');
 });
 
+/** A backend factory whose backends can be told their GPU is gone: each has a recorder of its own. */
+function losable() {
+  const made = [];
+  const create = async (canvas) => {
+    const rec = recorder();
+    let gone;
+    const lost = new Promise((resolve) => { gone = resolve; });
+    made.push({ rec, canvas, gone });
+    return { ...(await rec.create(canvas)), lost };
+  };
+  return { made, create };
+}
+
+/** Let the loss be heard and the next backend load: both are a few promise turns. */
+const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+test('gpu - a backend that loses its GPU is replaced on a fresh canvas, and the scene is sent again', async (t) => {
+  const { app, root } = coreScene(t);
+  const { made, create } = losable();
+  const controller = gpu(app, { backend: create });
+  await controller.ready;
+  const texture = { width: 1, height: 1 };
+  const sprite = app.blit({ x: 2, y: 3, w: 8, h: 8, port: 'gpu' });
+  gpuContent(sprite, { texture });
+  const plain = app.blit({ x: 20, y: 0, w: 4, h: 4, port: 'gpu' });
+  runFrame(root, 1);
+  assert.equal(made[0].rec.draws().at(-1).count, 2);
+
+  made[0].gone('context lost');
+  await settle();
+  assert.equal(made.length, 2, 'another backend was made');
+  assert.ok(made[0].rec.calls.some(([kind]) => kind === 'destroy'), 'the lost one was destroyed');
+  assert.equal(made[0].canvas.isConnected, false, 'its canvas is gone');
+  assert.equal(controller.canvas, made[1].canvas);
+  assert.equal(controller.kind, 'recorder');
+
+  runFrame(root, 1);
+  const frame = made[1].rec.draws().at(-1);
+  assert.equal(frame.count, 2, 'every member is drawn by the new backend');
+  assert.deepEqual(frame.boxes.find((box) => box[0] === 2), [2, 3, 8, 8]);
+  assert.ok(made[1].rec.calls.some(([kind, , source]) => kind === 'texture' && source === texture), 'its texture is uploaded again');
+  assert.equal(sprite.el.style.opacity, '0', 'the element is still the proxy');
+  plain.set({ x: 30 });
+  runFrame(root, 1);
+  assert.ok(made[1].rec.draws().at(-1).boxes.some((box) => box[0] === 30), 'and it goes on drawing changes');
+});
+
+test('gpu - a GPU that keeps going is left alone after three restarts in a row', async (t) => {
+  const { app, root } = coreScene(t);
+  const { made, create } = losable();
+  const controller = gpu(app, { backend: create });
+  await controller.ready;
+  app.blit({ x: 0, y: 0, w: 8, h: 8, port: 'gpu' });
+  for (let k = 0; k < 6 && made[k]; k += 1) {
+    made[k].gone('context lost');
+    await settle();
+  }
+  assert.equal(made.length, 4, 'the first and three more');
+  assert.equal(controller.kind, null);
+  assert.doesNotThrow(() => runFrame(root, 1));
+});
+
+test('gpu - a backend lost after the root is destroyed starts nothing', async (t) => {
+  const { app } = coreScene(t);
+  const { made, create } = losable();
+  const controller = gpu(app, { backend: create });
+  await controller.ready;
+  controller.destroy();
+  made[0].gone('context lost');
+  await settle();
+  assert.equal(made.length, 1);
+});
+
 test('gpu - destroyed while the backend loads: no canvas left, and the late backend is released', async (t) => {
   const { app, host } = coreScene(t);
   const rec = recorder();

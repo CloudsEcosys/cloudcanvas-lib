@@ -24,6 +24,9 @@ export const GPU_ATTR = 'data-blit-gpu';
 
 /** @type {WeakMap<object, object>} root -> its gpu controller */
 const GPUS = /* @__PURE__ */ new WeakMap();
+/** How often a root starts another backend after losing its GPU: this many times within this many milliseconds, then no more. */
+const RESTARTS = 3;
+const RESTART_WINDOW = 10000;
 
 /** @type {WeakMap<object, object|object[]>} blit state -> the content an add-on gave it */
 const CONTENT = /* @__PURE__ */ new WeakMap();
@@ -241,7 +244,9 @@ function sameRecord(a, b) {
 }
 
 /**
- * Draw a root's gpu blits on the GPU. Idempotent per root: a second call returns the first controller.
+ * Draw a root's gpu blits on the GPU. Idempotent per root: a second call returns the first controller. When the
+ * browser takes the GPU away (a lost context or device, reported by the backend's `lost`), a new backend is
+ * started on a fresh canvas and the scene is sent again; `canvas` and `kind` follow it.
  * @param {object} app the root collection (`blit('#app')`)
  * @param {{backend?: 'auto'|'webgpu'|'webgl2'|Function, layer?: 'under'|'over'}} [options] `auto` tries WebGPU, then
  *   WebGL2; a function is a `createBackend(canvas)` of your own (the contract in `./gpu-scene.js`)
@@ -258,22 +263,11 @@ export function gpu(app, options = {}) {
   const controller = {
     root, backend: null, canvas: null, scene: new Scene(), members: new Set(), touched: new Set(), records: new Map(),
     loose: new Set(),
-    sweep: true, redraw: true, view: root.view, destroyed: false, offs: []
+    sweep: true, redraw: true, view: root.view, destroyed: false, offs: [], restarts: []
   };
-  const layer = options.layer === 'over' ? 'over' : 'under';
-  controller.ready = loadBackend(controller, options.backend || 'auto', layer).then((backend) => {
-    if (controller.destroyed) {
-      backend.destroy();
-      controller.canvas?.remove();
-      controller.canvas = null;
-      return backend.kind;
-    }
-    controller.backend = backend;
-    controller.redraw = true;
-    schedule(root);
-    return backend.kind;
-  });
-  controller.ready.catch((error) => logger.warn('no GPU backend; gpu blits stay invisible proxies', error));
+  controller.wanted = options.backend || 'auto';
+  controller.layer = options.layer === 'over' ? 'over' : 'under';
+  start(controller);
 
   controller.offs.push(
     app.tick(() => readPass(controller), 'read'),
@@ -307,6 +301,49 @@ export function gpu(app, options = {}) {
   }
   schedule(root);
   return controller.api;
+}
+
+/** Load a backend and take it into use. `controller.ready` is the load in progress, or the last one. */
+function start(controller) {
+  controller.ready = loadBackend(controller, controller.wanted, controller.layer).then((backend) => {
+    if (controller.destroyed) {
+      backend.destroy();
+      controller.canvas?.remove();
+      controller.canvas = null;
+      return backend.kind;
+    }
+    controller.backend = backend;
+    controller.redraw = true;
+    schedule(controller.root);
+    backend.lost?.then((reason) => restart(controller, backend, reason));
+    return backend.kind;
+  });
+  controller.ready.catch((error) => logger.warn('no GPU backend; gpu blits stay invisible proxies', error));
+}
+
+/**
+ * The browser took the GPU from under a backend (a lost WebGL2 context, a lost WebGPU device). A backend never
+ * draws again after that, so it is let go and another is started on a fresh canvas. The scene starts over, since
+ * the new backend holds none of the old one's textures or meshes: the next frame records every member again. A
+ * GPU that has already been replaced `RESTARTS` times in the last `RESTART_WINDOW` ms is left alone, and its
+ * blits stay proxies: a GPU that keeps going is not one to keep asking.
+ */
+function restart(controller, backend, reason) {
+  if (controller.destroyed || controller.backend !== backend) return;
+  controller.backend = null;
+  backend.destroy();
+  const now = Date.now();
+  controller.restarts = controller.restarts.filter((at) => now - at < RESTART_WINDOW);
+  if (controller.restarts.length >= RESTARTS) {
+    logger.error(`the ${backend.kind} backend lost its GPU again (${reason}), ${RESTARTS} restarts in; gpu blits stay invisible proxies`);
+    return;
+  }
+  controller.restarts.push(now);
+  logger.warn(`the ${backend.kind} backend lost its GPU (${reason}); starting another`);
+  controller.scene = new Scene();
+  controller.records.clear();
+  controller.sweep = true;
+  start(controller);
 }
 
 /** A fresh canvas in the host per attempt: a canvas that has handed out one context kind refuses the other. */

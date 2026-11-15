@@ -3,4 +3,4 @@
  * Written by Richard Christopher, Copyright 2026 NeoTec, LLC
  * MIT License. https://github.com/CloudsEcosys/cloudcanvas-lib#readme
  */
-import{a,b,c,d,e,f,g,h}from"./chunk-TVBXP5KW.js";import"./chunk-PMW52N5Q.js";export{a as GPU_ATTR,h as gpu,d as gpuContent,c as gpuPort,g as meshTransform,e as paintedProxy,b as parseTint,f as punch};
+import{a,b,c,d,e,f,g,h}from"./chunk-H56IX7MA.js";import"./chunk-PMW52N5Q.js";export{a as GPU_ATTR,h as gpu,d as gpuContent,c as gpuPort,g as meshTransform,e as paintedProxy,b as parseTint,f as punch};

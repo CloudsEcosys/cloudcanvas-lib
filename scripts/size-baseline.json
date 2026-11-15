@@ -36,8 +36,8 @@
     "gzip": 8967
   },
   "sandbox": {
-    "min": 135795,
-    "gzip": 46744
+    "min": 135799,
+    "gzip": 46745
   },
   "sandbox/testing": {
     "min": 9485,
@@ -160,35 +160,35 @@
     "gzip": 1575
   },
   "gpu": {
-    "min": 15734,
-    "gzip": 6639
+    "min": 16264,
+    "gzip": 6831
   },
   "orbit": {
     "min": 1908,
     "gzip": 992
   },
   "mesh": {
-    "min": 2634,
-    "gzip": 1307
+    "min": 2638,
+    "gzip": 1308
   },
   "svg-path": {
-    "min": 21046,
-    "gzip": 8753
+    "min": 21050,
+    "gzip": 8745
   },
   "sprites": {
-    "min": 5210,
-    "gzip": 2585
+    "min": 5214,
+    "gzip": 2587
   },
   "text": {
-    "min": 3862,
-    "gzip": 2125
+    "min": 3866,
+    "gzip": 2127
   },
   "video": {
-    "min": 3072,
-    "gzip": 1643
+    "min": 3076,
+    "gzip": 1644
   },
   "own-canvas": {
-    "min": 2694,
+    "min": 2698,
     "gzip": 1363
   },
   "xml": {
@@ -196,7 +196,7 @@
     "gzip": 1790
   },
   "html-canvas": {
-    "min": 2393,
+    "min": 2397,
     "gzip": 1125
   },
   "panel": {
@@ -204,12 +204,12 @@
     "gzip": 24336
   },
   "+webgl2": {
-    "min": 9683,
-    "gzip": 3874
+    "min": 9734,
+    "gzip": 3893
   },
   "+webgpu": {
-    "min": 12712,
-    "gzip": 4847
+    "min": 12772,
+    "gzip": 4875
   },
   "+panel-window": {
     "min": 2663,
